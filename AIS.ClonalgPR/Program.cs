@@ -14,11 +14,12 @@ namespace AIS.ClonalgPR
         static void Main()
         {
             //var clonalgPR = new ClonalgPR(distance: new Euclidean());
-            //var antigens = GetAntigens();
+            var antigens = GetAntigens();
             //clonalgPR.Execute(antigens: antigens, maximumIterations: 1, percentHighAffinity: 60, percentLowAffinity: 40);
 
             //SaveResult(clonalgPR.Results);
-            TestWithAlphabetOfSize2();
+            //TestWithAlphabetOfSize2();
+            new HiddenMarkovModelTest02(antigens.Select(s=> s.Sequence).ToList()).Train();
         }
 
         private static List<string> GetSequencesByAntigens(List<Antigen> antigens) {

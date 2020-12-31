@@ -8,6 +8,7 @@ namespace AIS.ClonalgPR
         private static char[] _dna = null;
         private static char[] _rna = null;
         private static Random _random = null;
+        private static char[] _gaps = null;
 
         public const int qtdMinAntibodies = 1;
         public const int qtdMaxAntibodies = 100;
@@ -19,7 +20,7 @@ namespace AIS.ClonalgPR
             get
             {
                 if (_aminoacids == null)
-                    _aminoacids = new char[20] { 'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'};
+                    _aminoacids = new char[20] { 'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y' };
 
                 return _aminoacids;
             }
@@ -55,6 +56,17 @@ namespace AIS.ClonalgPR
                     _random = new Random();
 
                 return _random;
+            }
+        }
+
+        public static char[] Gaps
+        {
+            get
+            {
+                if (_gaps == null)
+                    _gaps = new char[1] { '-' };
+
+                return _gaps;
             }
         }
     }
