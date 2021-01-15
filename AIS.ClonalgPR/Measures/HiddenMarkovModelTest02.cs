@@ -10,14 +10,22 @@ namespace AIS.ClonalgPR.Measures
         private List<string> Sequences { get; set; }
         private List<Dictionary<char, int>> Aminoacids { get; set; }
         private List<Dictionary<char, double>> Probabilities { get; set; }
-        private List<List<Dictionary<StatesEnum, double>>> Transitions { get; set; }
+        private List<Dictionary<StatesEnum, double>> Transitions { get; set; }
+
+        private int GetStatesCount 
+        {
+            get 
+            {
+                return Transitions.Count;
+            }
+        }
 
         public HiddenMarkovModelTest02(List<string> sequences)
         {
             Sequences = sequences;
             Aminoacids = new List<Dictionary<char, int>>();
             Probabilities = new List<Dictionary<char, double>>();
-            Transitions = new List<List<Dictionary<StatesEnum, double>>>();
+            Transitions = new List<Dictionary<StatesEnum, double>>();
         }
 
         public void Train()
@@ -55,11 +63,10 @@ namespace AIS.ClonalgPR.Measures
         {
             var qtdSequences = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
-            var states = new List<Dictionary<StatesEnum, double>>();
 
             for (int i = 0; i < sequenceSize; i++)
             {
-                var s = new Dictionary<StatesEnum, double>()
+                var states = new Dictionary<StatesEnum, double>()
                 {
                     { StatesEnum.Match, 0.0 },
                     { StatesEnum.Insert, 0.0 },
@@ -78,15 +85,29 @@ namespace AIS.ClonalgPR.Measures
                         deleteCount++;
                 }
 
-                s[StatesEnum.Match] = (double)matchCount / (double)qtdSequences;
-                if (deleteCount > (qtdSequences / 2))
-                    s[StatesEnum.Insert] = (double)deleteCount / (double)qtdSequences;
-                else if (deleteCount > 0)
-                    s[StatesEnum.Delete] = (double)deleteCount / (double)qtdSequences;
+                states[StatesEnum.Match] = (double)matchCount / (double)qtdSequences;
+                if (deleteCount > 1)
+                    states[StatesEnum.Insert] = (double)deleteCount / (double)qtdSequences;
+                else if (deleteCount == 1)
+                    states[StatesEnum.Delete] = (double)deleteCount / (double)qtdSequences;
 
-                states.Add(s);
+                Transitions.Add(states);
             }
-            Transitions.Add(states);
+        }
+
+        private static double NullModelValue(int alphabetSize, int sequenceSize)
+        {
+            return Math.Pow((double)1 / alphabetSize, sequenceSize);
+        }
+
+        private double CalculateTotalProbability() 
+        {
+            return 0.0;
+        }
+
+        private double CalculateLogOdds()
+        {
+            return 0.0;
         }
     }
 }
