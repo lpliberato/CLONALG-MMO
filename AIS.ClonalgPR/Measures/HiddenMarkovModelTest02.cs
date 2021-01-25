@@ -12,9 +12,9 @@ namespace AIS.ClonalgPR.Measures
         private List<Dictionary<char, double>> Probabilities { get; set; }
         private List<Dictionary<StatesEnum, double>> Transitions { get; set; }
 
-        private int GetStatesCount 
+        private int GetStatesCount
         {
-            get 
+            get
             {
                 return Transitions.Count;
             }
@@ -31,7 +31,11 @@ namespace AIS.ClonalgPR.Measures
         public void Train()
         {
             CreateStates();
+            CreateProbabilities();
+        }
 
+        private void CreateProbabilities()
+        {
             var qtdSequences = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
 
@@ -85,11 +89,11 @@ namespace AIS.ClonalgPR.Measures
                         deleteCount++;
                 }
 
-                states[StatesEnum.Match] = (double)matchCount / (double)qtdSequences;
+                states[StatesEnum.Match] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
                 if (deleteCount > 1)
-                    states[StatesEnum.Insert] = (double)deleteCount / (double)qtdSequences;
+                    states[StatesEnum.Insert] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
                 else if (deleteCount == 1)
-                    states[StatesEnum.Delete] = (double)deleteCount / (double)qtdSequences;
+                    states[StatesEnum.Delete] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
 
                 Transitions.Add(states);
             }
@@ -100,14 +104,31 @@ namespace AIS.ClonalgPR.Measures
             return Math.Pow((double)1 / alphabetSize, sequenceSize);
         }
 
-        private double CalculateTotalProbability() 
+        public double CalculateTotalProbability(char[] sequence)
         {
-            return 0.0;
+            var probability = 1.0;
+            for (int i = 0; i < sequence.Length; i++)
+            {
+                var aminoacid = sequence[i];
+                var probabilities = Probabilities[i];
+                var transitions = Transitions[i];
+                probability *= probabilities[aminoacid];
+
+                var matchTransition = transitions.GetValueOrDefault(StatesEnum.Match);
+                var insertTransition = transitions.GetValueOrDefault(StatesEnum.Insert);
+                var deleteTransition = transitions.GetValueOrDefault(StatesEnum.Delete);
+                probability *= matchTransition > 0 ? matchTransition : 1;
+                probability *= insertTransition > 0 ? insertTransition : 1;
+                probability *= deleteTransition > 0 ? deleteTransition : 1;
+            }
+
+            return probability;
         }
 
-        private double CalculateLogOdds()
+        public double CalculateLogOdds(char[] sequence)
         {
-            return 0.0;
+            var probability = CalculateTotalProbability(sequence);
+            return Math.Log(probability) / NullModelValue(Constants.Aminoacids.Length, sequence.Length);
         }
     }
 }

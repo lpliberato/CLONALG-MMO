@@ -19,10 +19,14 @@ namespace AIS.ClonalgPR
 
             //SaveResult(clonalgPR.Results);
             //TestWithAlphabetOfSize2();
-            new HiddenMarkovModelTest02(antigens.Select(s=> s.Sequence).ToList()).Train();
+            var markov = new HiddenMarkovModelTest02(antigens.Select(s => s.Sequence).ToList());
+            markov.Train();
+            Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[] { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
+            Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[] { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
         }
 
-        private static List<string> GetSequencesByAntigens(List<Antigen> antigens) {
+        private static List<string> GetSequencesByAntigens(List<Antigen> antigens)
+        {
             return antigens.Select(s => s.Sequence).ToList();
         }
 
