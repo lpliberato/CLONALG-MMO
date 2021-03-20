@@ -11,6 +11,7 @@ namespace AIS.ClonalgPR.Measures
         private List<Dictionary<char, int>> Aminoacids { get; set; }
         private List<Dictionary<char, double>> Probabilities { get; set; }
         private List<Dictionary<StatesEnum, double>> Transitions { get; set; }
+        private List<int> InsertionRegion { get; set; }
 
         private int GetStatesCount
         {
@@ -26,12 +27,50 @@ namespace AIS.ClonalgPR.Measures
             Aminoacids = new List<Dictionary<char, int>>();
             Probabilities = new List<Dictionary<char, double>>();
             Transitions = new List<Dictionary<StatesEnum, double>>();
+            InsertionRegion = new List<int>();
         }
 
         public void Train()
         {
             CreateStates();
             CreateProbabilities();
+        }
+
+        private void CreateProbabilitiesInsertionState(ref int index) 
+        {
+            var aminoacids = new Dictionary<char, int>();
+            var probabilities = new Dictionary<char, double>();
+            var qtdSequences = Sequences.Count;
+            var sequenceSize = Sequences[0].Length;
+            int i = 0;
+
+            for (i = index; i < sequenceSize; i++)
+            {
+                if (!Sequences.Where(w => w.Where((s, y) => y == i && s == '-').Any()).Any())
+                    break;
+
+                for (int j = 0; j < qtdSequences; j++)
+                {
+                    var sequence = Sequences[j].ToCharArray();
+                    var aminoacid = sequence[i];
+
+                    if (Constants.Gaps.Contains(aminoacid))
+                        continue;
+
+                        if (!aminoacids.ContainsKey(aminoacid))
+                    {
+                        aminoacids.Add(aminoacid, 1);
+                        probabilities.Add(aminoacid, (double)1 / qtdSequences);
+                    }
+                    else
+                    {
+                        aminoacids[aminoacid] += 1;
+                        probabilities[aminoacid] = (double)aminoacids[aminoacid] / qtdSequences;
+                    }
+                }
+            }
+            index = i;
+            Probabilities.Add(probabilities);
         }
 
         private void CreateProbabilities()
@@ -47,7 +86,10 @@ namespace AIS.ClonalgPR.Measures
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var aminoacid = sequence[i];
-                    if (!aminoacids.ContainsKey(aminoacid))
+                    if (Constants.Gaps.Contains(aminoacid)) 
+                    {
+                        CreateProbabilitiesInsertionState(ref i);
+                    } else if (!aminoacids.ContainsKey(aminoacid))
                     {
                         aminoacids.Add(aminoacid, 1);
                         probabilities.Add(aminoacid, (double)1 / qtdSequences);
@@ -62,6 +104,28 @@ namespace AIS.ClonalgPR.Measures
                 Probabilities.Add(probabilities);
             }
         }
+
+        private void CreateInsertionState(int index, Dictionary<StatesEnum, double> states)
+        {
+            var qtdSequences = Sequences.Count;
+            var sequenceSize = Sequences[0].Length;
+            var gapCount = 0;
+            var matchCount = 0;
+
+            for (int i = index; i < sequenceSize; i++)
+            {
+                for (int j = 0; j < qtdSequences; j++)
+                {
+                    var sequence = Sequences[j].ToCharArray();
+                    var aminoacid = sequence[i];
+                    if (Constants.Gaps.Contains(aminoacid))
+                        gapCount++;
+                    else
+                        matchCount++;
+                }
+                states[StatesEnum.Insert] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
+            }
+        } 
 
         private void CreateStates()
         {
@@ -91,9 +155,10 @@ namespace AIS.ClonalgPR.Measures
 
                 states[StatesEnum.Match] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
                 if (deleteCount > 1)
-                    states[StatesEnum.Insert] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
-                else if (deleteCount == 1)
-                    states[StatesEnum.Delete] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
+                    CreateInsertionState(i, states);
+                //    states[StatesEnum.Insert] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
+                //else if (deleteCount == 1)
+                //    states[StatesEnum.Delete] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
 
                 Transitions.Add(states);
             }
