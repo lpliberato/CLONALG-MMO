@@ -105,7 +105,7 @@ namespace AIS.ClonalgPR.Measures
             }
         }
 
-        private void CreateInsertionState(int index, Dictionary<StatesEnum, double> states)
+        private void CreateInsertionState(int index, ref Dictionary<StatesEnum, double> states)
         {
             var qtdSequences = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
@@ -155,7 +155,7 @@ namespace AIS.ClonalgPR.Measures
 
                 states[StatesEnum.Match] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
                 if (deleteCount > 1)
-                    CreateInsertionState(i, states);
+                    CreateInsertionState(i, ref states);
                 //    states[StatesEnum.Insert] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
                 //else if (deleteCount == 1)
                 //    states[StatesEnum.Delete] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
