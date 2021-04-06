@@ -65,9 +65,6 @@ namespace AIS.ClonalgPR.Measures
                 states[StatesEnum.Match] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
                 if (deleteCount > 1)
                     CreateInsertionState(i, ref states);
-                //    states[StatesEnum.Insert] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
-                //else if (deleteCount == 1)
-                //    states[StatesEnum.Delete] = Convert.ToDouble(deleteCount) / Convert.ToDouble(qtdSequences);
 
                 Transitions.Add(states);
             }
@@ -116,7 +113,7 @@ namespace AIS.ClonalgPR.Measures
 
             for (i = index; i < sequenceSize; i++)
             {
-                if (!Sequences.Where(w => w.Where((s, y) => y == i && s == '-').Any()).Any())
+                if (!Sequences.Where(sequence => sequence.Where((s, y) => y == i && s == '-').Any()).Any())
                     break;
 
                 for (int j = 0; j < qtdSequences; j++)
@@ -148,26 +145,26 @@ namespace AIS.ClonalgPR.Measures
             var qtdSequences = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
             var gapCount = 0;
-            var matchCount = 0;
+            List<int> matchIndexes = new List<int>();
             int i = 0;
 
             for (i = index; i < sequenceSize; i++)
             {
-                if (!Sequences.Where(w => w.Where((s, y) => y == i && s == '-').Any()).Any())
-                    break;
-
                 for (int j = 0; j < qtdSequences; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
+                    var aminoacid = sequence[index];
                     if (Constants.Gaps.Contains(aminoacid))
                         gapCount++;
                     else
-                        matchCount++;
+                    {
+                        if (!matchIndexes.Contains(j))
+                            matchIndexes.Add(j);
+                    }
                 }
-                states[StatesEnum.Insert] = Convert.ToDouble(matchCount) / Convert.ToDouble(qtdSequences);
             }
-            index = i;
+            states[StatesEnum.Insert] = Convert.ToDouble(matchIndexes.Count) / Convert.ToDouble(qtdSequences);
+            states[StatesEnum.Match] = Convert.ToDouble(qtdSequences - matchIndexes.Count) / Convert.ToDouble(qtdSequences);
         } 
 
         private static double NullModelValue(int alphabetSize, int sequenceSize)
