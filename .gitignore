@@ -8,6 +8,8 @@
 
 # Build results
 
+DesignTimeBuild
+
 [Dd]ebug/
 [Rr]elease/
 x64/
