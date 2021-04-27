@@ -79,8 +79,7 @@ namespace AIS.ClonalgPR.Measures
                     { 'G', 0 },
                     { 'T', 0 },
                 };
-                var region = Regions[i];
-                var state = GetState(region);
+                var state = GetState(Regions[i]);
 
                 for (int j = 0; j < qtdSequences; j++)
                 {
@@ -94,7 +93,7 @@ namespace AIS.ClonalgPR.Measures
                     else if (state == TransitionEnum.Insert)
                     {
                         var length = ReturnsLengthInsertTransitionState(i);
-                        CreateProbabilityInsertState(ref i, length, qtdSequences, ref aminoacids, ref probabilities);
+                        CreateProbabilityInsertState(length, qtdSequences, ref i, ref aminoacids, ref probabilities);
                         break;
                     }
                 }
@@ -106,8 +105,7 @@ namespace AIS.ClonalgPR.Measures
         {
             for (int i = 1; i < Regions.Count - 1; i++)
             {
-                var region = Regions[i];
-                var state = GetState(region);
+                var state = GetState(Regions[i]);
 
                 if (state == TransitionEnum.Match || state == TransitionEnum.Insert)
                     CreateInsertionOrMatchState(ref i);
@@ -133,10 +131,10 @@ namespace AIS.ClonalgPR.Measures
                         });
 
             if (insertionPercentage > 0)
-                CreateInsertionState(ref index, length);
+                CreateInsertionState(length, ref index);
         }
 
-        private void CreateInsertionState(ref int index, int length)
+        private void CreateInsertionState(int length, ref int index)
         {
             var count = 0;
             for (int i = index + 1; i < index + length; i++)
@@ -189,9 +187,7 @@ namespace AIS.ClonalgPR.Measures
         private int ReturnsLengthInsertTransitionState(int index)
         {
             var count = 0;
-            var i = 0;
-
-            for (i = index; i < Regions.Count; i++)
+            for (int i = index; i < Regions.Count; i++)
             {
                 var state = GetState(Regions[i]);
                 if (state != TransitionEnum.Insert)
@@ -204,13 +200,15 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateStates()
         {
-            var qtdSequences = Sequences.Count;
-            var sequenceSize = Sequences[0].Length;
             var qtdStates = GetQtdStates();
 
             for (int i = 0; i < qtdStates; i++)
             {
-
+                States.Add(new State()
+                {
+                    Probabilities = Probabilities[i],
+                    Transitions = (i != qtdStates -1) ? Transitions[i] : null
+                });
             }
         }
 
@@ -221,8 +219,7 @@ namespace AIS.ClonalgPR.Measures
 
             for (int i = 0; i < Regions.Count; i++)
             {
-                var region = Regions[i];
-                var state = GetState(region);
+                var state = GetState(Regions[i]);
 
                 if (state == TransitionEnum.Match)
                 {
@@ -253,7 +250,7 @@ namespace AIS.ClonalgPR.Measures
             probabilities[aminoacid] = (double)aminoacids[aminoacid] / qtdSequences;
         }
 
-        private void CreateProbabilityInsertState(ref int index, int length, int qtdSequences, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityInsertState(int length, int qtdSequences, ref int index, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
         {
             int i = 0;
             for (i = index; i < index + length; i++)
