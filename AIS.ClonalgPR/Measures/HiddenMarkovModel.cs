@@ -274,39 +274,6 @@ namespace AIS.ClonalgPR.Measures
                 region.GetValueOrDefault(TransitionEnum.Insert) == 1 ? TransitionEnum.Insert : TransitionEnum.Match;
         }
 
-        private void CreateInsertionState(int index, ref Dictionary<TransitionEnum, double> states, ref int matchCount)
-        {
-            var qtdSequences = Sequences.Count;
-            var sequenceSize = Sequences[0].Length;
-            var gapCount = 0;
-            matchCount = 0;
-            List<int> matchIndexes = new List<int>();
-            int i = 0;
-
-            for (i = index; i < sequenceSize; i++)
-            {
-                if (!Sequences.Where(sequence => sequence.Where((s, y) => y == i && s == '-').Any()).Any())
-                    break;
-
-                for (int j = 0; j < qtdSequences; j++)
-                {
-                    var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[index];
-                    if (Constants.Gaps.Contains(aminoacid))
-                        gapCount++;
-                    else
-                    {
-                        matchCount++;
-                        if (!matchIndexes.Contains(j))
-                            matchIndexes.Add(j);
-                    }
-                }
-            }
-            states[TransitionEnum.Insert] = Convert.ToDouble(matchIndexes.Count) / Convert.ToDouble(qtdSequences);
-            states[TransitionEnum.Match] = Convert.ToDouble(qtdSequences - matchIndexes.Count) / Convert.ToDouble(qtdSequences);
-            index = i;
-        }
-
         private static double NullModelValue(int alphabetSize, int sequenceSize)
         {
             return Math.Pow((double)1 / alphabetSize, sequenceSize);
