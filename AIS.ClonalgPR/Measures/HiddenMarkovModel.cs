@@ -87,32 +87,24 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateTransitions()
         {
-            for (int i = 0; i < Regions.Count; i++)
+            for (int i = 1; i < Regions.Count - 1; i++)
             {
-                if (i <= Regions.Count - 1)
-                {
-                    var region = Regions[i + 1];
-                    var state = GetState(region);
+                var region = Regions[i];
+                var state = GetState(region);
 
-                    if (state == TransitionEnum.Match)
-                        Transitions.Add(new Dictionary<TransitionEnum, double>()
-                        {
-                            { TransitionEnum.Match, 1.0 },
-                            { TransitionEnum.Insert, 0.0 },
-                            { TransitionEnum.Delete, 0.0 }
-                        });
-                    else if (state == TransitionEnum.Delete)
-                        continue;
-                    else if (state == TransitionEnum.Insert)
-                        CreateInsertTransition(ref i);
-                }
+                if (state == TransitionEnum.Match || state == TransitionEnum.Insert)
+                    CreateInsertionOrMatchState(ref i);
+                else if (state == TransitionEnum.Delete)
+                    continue;
             }
         }
 
-        private void CreateInsertTransition(ref int index)
+        private void CreateInsertionOrMatchState(ref int index)
         {
             var qtdSequences = Sequences.Count;
-            var quantity = QuantitySequencesInsertState(index, 1, qtdSequences);
+            var previousIndex = index;
+            var length = ReturnsLengthInsertTransitionState(index);
+            var quantity = QuantitySequencesInsertState(previousIndex, length, qtdSequences);
             var insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(qtdSequences);
             var matchPercentage = 1.0 - insertionPercentage;
 
@@ -123,10 +115,30 @@ namespace AIS.ClonalgPR.Measures
                             { TransitionEnum.Delete, 0.0 }
                         });
 
-            var length = ReturnsLengthInsertTransitionState(ref index);
-            quantity = QuantitySequencesInsertState(index, length, qtdSequences);
-            insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(qtdSequences);
-            matchPercentage = 1.0 - insertionPercentage;
+            if (insertionPercentage > 0)
+                CreateInsertionState(ref index, length);
+        }
+
+        private void CreateInsertionState(ref int index, int length) 
+        {
+            var count = 0;
+            for (int i = index + 1; i < index + length; i++)
+            {
+                for (int j = 0; j < length; j++)
+                {
+                    var sequence = Sequences[j].ToCharArray();
+                    var aminoacid = sequence[i];
+                    if (!Constants.Gaps.Contains(aminoacid))
+                    {
+                        count++;
+                        break;
+                    }
+                }
+            }
+
+            var qtdSequences = Sequences.Count;
+            var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(qtdSequences);
+            var matchPercentage = 1.0 - insertionPercentage;
 
             Transitions.Add(new Dictionary<TransitionEnum, double>()
                         {
@@ -134,13 +146,15 @@ namespace AIS.ClonalgPR.Measures
                             { TransitionEnum.Insert, insertionPercentage },
                             { TransitionEnum.Delete, 0.0 }
                         });
+
+            index += length - 1;
         }
 
         private int QuantitySequencesInsertState(int index, int length, int qtdSequences)
         {
             var indexes = new List<int>();
 
-            for (int i = index; i < length; i++)
+            for (int i = index; i < index + length; i++)
             {
                 for (int j = 0; j < qtdSequences; j++)
                 {
@@ -155,19 +169,19 @@ namespace AIS.ClonalgPR.Measures
             return indexes.Count;
         }
 
-        private int ReturnsLengthInsertTransitionState(ref int index)
+        private int ReturnsLengthInsertTransitionState(int index)
         {
-            var isInsertionRegion = true;
             var count = 0;
             var i = 0;
 
-            for (i = index; i < Regions.Count && isInsertionRegion; i++)
-            {
-                count++;
+            for (i = index; i < Regions.Count; i++)
+            {                
                 var state = GetState(Regions[i]);
-                isInsertionRegion = state == TransitionEnum.Insert;
+                if (state != TransitionEnum.Insert)
+                    break;
+                count++;
             }
-            index = i;
+
             return count;
         }
 
