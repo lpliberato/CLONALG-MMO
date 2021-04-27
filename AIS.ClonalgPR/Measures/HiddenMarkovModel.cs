@@ -43,6 +43,7 @@ namespace AIS.ClonalgPR.Measures
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var aminoacid = sequence[i];
+
                     if (Constants.Gaps.Contains(aminoacid))
                         gap++;
                 }
@@ -79,7 +80,10 @@ namespace AIS.ClonalgPR.Measures
                     else if (state == TransitionEnum.Delete)
                         continue;
                     else if (state == TransitionEnum.Insert)
-                        CreateProbabilityInsertState(ref i, sequenceSize, qtdSequences, ref aminoacids, ref probabilities);
+                    {
+                        var length = ReturnsLengthInsertTransitionState(i);
+                        CreateProbabilityInsertState(ref i, length, qtdSequences, ref aminoacids, ref probabilities);
+                    }
                 }
                 Probabilities.Add(probabilities);
             }
@@ -244,15 +248,10 @@ namespace AIS.ClonalgPR.Measures
             }
         }
 
-        private void CreateProbabilityDeleteState(char aminoacid, int qtdSequences, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
-        {
-
-        }
-
-        private void CreateProbabilityInsertState(ref int index, int sequenceSize, int qtdSequences, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityInsertState(ref int index, int length, int qtdSequences, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
         {
             int i = 0;
-            for (i = index; i < sequenceSize; i++)
+            for (i = index; i < index + length; i++)
             {
                 for (int j = 0; j < qtdSequences; j++)
                 {
