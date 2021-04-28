@@ -9,16 +9,16 @@ namespace AIS.ClonalgPR.Measures
     {
         private List<string> Sequences { get; set; }
         private List<Dictionary<char, double>> Probabilities { get; set; }
-        private List<Dictionary<TransitionEnum, double>> Transitions { get; set; }
-        private List<Dictionary<TransitionEnum, int>> Regions { get; set; }
+        private List<Dictionary<StateEnum, double>> Transitions { get; set; }
+        private List<Dictionary<StateEnum, int>> Regions { get; set; }
         private List<State> States { get; set; }
 
         public HiddenMarkovModel(List<string> sequences)
         {
             Sequences = sequences;
             Probabilities = new List<Dictionary<char, double>>();
-            Transitions = new List<Dictionary<TransitionEnum, double>>();
-            Regions = new List<Dictionary<TransitionEnum, int>>();
+            Transitions = new List<Dictionary<StateEnum, double>>();
+            Regions = new List<Dictionary<StateEnum, int>>();
             States = new List<State>();
         }
 
@@ -49,11 +49,11 @@ namespace AIS.ClonalgPR.Measures
                 }
 
                 Regions.Add(
-                    new Dictionary<TransitionEnum, int>()
+                    new Dictionary<StateEnum, int>()
                     {
-                        { TransitionEnum.Delete, gap == 1 ? 1 : 0 },
-                        { TransitionEnum.Match, gap == 0 ? 1 : 0 },
-                        { TransitionEnum.Insert, gap > 1 ? 1 : 0 }
+                        { StateEnum.Delete, gap == 1 ? 1 : 0 },
+                        { StateEnum.Match, gap == 0 ? 1 : 0 },
+                        { StateEnum.Insert, gap > 1 ? 1 : 0 }
                     });
             }
         }
@@ -86,11 +86,11 @@ namespace AIS.ClonalgPR.Measures
                     var sequence = Sequences[j].ToCharArray();
                     var symbol = sequence[i];
 
-                    if (state == TransitionEnum.Match)
+                    if (state == StateEnum.Match)
                         CreateProbabilityMatchState(symbol, qtdSequences, ref symbols, ref probabilities);
-                    else if (state == TransitionEnum.Delete)
+                    else if (state == StateEnum.Delete)
                         continue;
-                    else if (state == TransitionEnum.Insert)
+                    else if (state == StateEnum.Insert)
                     {
                         var length = ReturnsLengthInsertTransitionState(i);
                         CreateProbabilityInsertState(length, qtdSequences, ref i, ref symbols, ref probabilities);
@@ -107,9 +107,9 @@ namespace AIS.ClonalgPR.Measures
             {
                 var state = GetState(Regions[i]);
 
-                if (state == TransitionEnum.Match || state == TransitionEnum.Insert)
+                if (state == StateEnum.Match || state == StateEnum.Insert)
                     CreateInsertionOrMatchState(ref i);
-                else if (state == TransitionEnum.Delete)
+                else if (state == StateEnum.Delete)
                     continue;
             }
         }
@@ -119,15 +119,15 @@ namespace AIS.ClonalgPR.Measures
             var qtdSequences = Sequences.Count;
             var previousIndex = index;
             var length = ReturnsLengthInsertTransitionState(index);
-            var quantity = QuantitySequencesInsertState(previousIndex, length, qtdSequences);
+            var quantity = AmountSequencesInsertState(previousIndex, length, qtdSequences);
             var insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(qtdSequences);
             var matchPercentage = 1.0 - insertionPercentage;
 
-            Transitions.Add(new Dictionary<TransitionEnum, double>()
+            Transitions.Add(new Dictionary<StateEnum, double>()
                         {
-                            { TransitionEnum.Match, matchPercentage },
-                            { TransitionEnum.Insert, insertionPercentage },
-                            { TransitionEnum.Delete, 0.0 }
+                            { StateEnum.Match, matchPercentage },
+                            { StateEnum.Insert, insertionPercentage },
+                            { StateEnum.Delete, 0.0 }
                         });
 
             if (insertionPercentage > 0)
@@ -155,17 +155,17 @@ namespace AIS.ClonalgPR.Measures
             var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(qtdSequences);
             var matchPercentage = 1.0 - insertionPercentage;
 
-            Transitions.Add(new Dictionary<TransitionEnum, double>()
+            Transitions.Add(new Dictionary<StateEnum, double>()
                         {
-                            { TransitionEnum.Match, matchPercentage },
-                            { TransitionEnum.Insert, insertionPercentage },
-                            { TransitionEnum.Delete, 0.0 }
+                            { StateEnum.Match, matchPercentage },
+                            { StateEnum.Insert, insertionPercentage },
+                            { StateEnum.Delete, 0.0 }
                         });
 
             index += length - 1;
         }
 
-        private int QuantitySequencesInsertState(int index, int length, int qtdSequences)
+        private int AmountSequencesInsertState(int index, int length, int qtdSequences)
         {
             var indexes = new List<int>();
 
@@ -190,7 +190,7 @@ namespace AIS.ClonalgPR.Measures
             for (int i = index; i < Regions.Count; i++)
             {
                 var state = GetState(Regions[i]);
-                if (state != TransitionEnum.Insert)
+                if (state != StateEnum.Insert)
                     break;
                 count++;
             }
@@ -221,18 +221,18 @@ namespace AIS.ClonalgPR.Measures
             {
                 var state = GetState(Regions[i]);
 
-                if (state == TransitionEnum.Match)
+                if (state == StateEnum.Match)
                 {
                     count++;
                     previousStateIsInsert = false;
                 }
-                else if (state == TransitionEnum.Insert)
+                else if (state == StateEnum.Insert)
                 {
                     if (!previousStateIsInsert)
                         count++;
                     previousStateIsInsert = true;
                 }
-                else if (state == TransitionEnum.Delete)
+                else if (state == StateEnum.Delete)
                 {
                     count++;
                     previousStateIsInsert = false;
@@ -265,10 +265,10 @@ namespace AIS.ClonalgPR.Measures
             index = i - 1;
         }
 
-        private TransitionEnum GetState(Dictionary<TransitionEnum, int> region)
+        private StateEnum GetState(Dictionary<StateEnum, int> region)
         {
-            return region.GetValueOrDefault(TransitionEnum.Delete) == 1 ? TransitionEnum.Delete :
-                region.GetValueOrDefault(TransitionEnum.Insert) == 1 ? TransitionEnum.Insert : TransitionEnum.Match;
+            return region.GetValueOrDefault(StateEnum.Delete) == 1 ? StateEnum.Delete :
+                region.GetValueOrDefault(StateEnum.Insert) == 1 ? StateEnum.Insert : StateEnum.Match;
         }
 
         private static double NullModelValue(int alphabetSize, int sequenceSize)
@@ -304,14 +304,14 @@ namespace AIS.ClonalgPR.Measures
             return probability > 0 ? probability : 1;
         }
 
-        private double GetTransitionValue(Dictionary<TransitionEnum, double> transitions)
+        private double GetTransitionValue(Dictionary<StateEnum, double> transitions)
         {
             if (transitions == null)
                 return 1;
 
-            var matchTransition = transitions.GetValueOrDefault(TransitionEnum.Match);
-            var deleteTransition = transitions.GetValueOrDefault(TransitionEnum.Delete);
-            var insertTransition = transitions.GetValueOrDefault(TransitionEnum.Insert);
+            var matchTransition = transitions.GetValueOrDefault(StateEnum.Match);
+            var deleteTransition = transitions.GetValueOrDefault(StateEnum.Delete);
+            var insertTransition = transitions.GetValueOrDefault(StateEnum.Insert);
 
             return ((matchTransition > 0) ? matchTransition : 1) * ((deleteTransition > 0) ? deleteTransition : 1) * ((insertTransition > 0) ? insertTransition : 1);
         }

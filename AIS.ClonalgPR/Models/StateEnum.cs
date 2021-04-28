@@ -1,6 +1,6 @@
 ﻿namespace AIS.ClonalgPR.Models
 {
-    public enum TransitionEnum
+    public enum StateEnum
     {
         Match = 0,
         Insert = 1,
