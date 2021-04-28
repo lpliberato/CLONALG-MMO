@@ -200,7 +200,7 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateStates()
         {
-            var qtdStates = GetQtdStates();
+            var qtdStates = GetAmountOfStates();
 
             for (int i = 0; i < qtdStates; i++)
             {
@@ -212,7 +212,7 @@ namespace AIS.ClonalgPR.Measures
             }
         }
 
-        private int GetQtdStates()
+        private int GetAmountOfStates()
         {
             var count = 0;
             var previousStateIsInsert = false;
@@ -221,7 +221,7 @@ namespace AIS.ClonalgPR.Measures
             {
                 var state = GetState(Regions[i]);
 
-                if (state == StateEnum.Match)
+                if (state == StateEnum.Match || state == StateEnum.Delete)
                 {
                     count++;
                     previousStateIsInsert = false;
@@ -231,11 +231,6 @@ namespace AIS.ClonalgPR.Measures
                     if (!previousStateIsInsert)
                         count++;
                     previousStateIsInsert = true;
-                }
-                else if (state == StateEnum.Delete)
-                {
-                    count++;
-                    previousStateIsInsert = false;
                 }
             }
             return count;
