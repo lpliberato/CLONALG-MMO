@@ -279,26 +279,35 @@ namespace AIS.ClonalgPR.Measures
         public double CalculateTotalProbability(char[] sequence)
         {
             var probability = 1.0;
-            for (int i = 0; i < sequence.Length; i++)
+            for (int i = 0; i < States.Count; i++)
             {
                 var aminoacid = sequence[i];
                 if (Constants.Gaps.Contains(aminoacid))
                     continue;
 
-                var probabilities = Probabilities[i];
-                var transitions = Transitions[i];
-
-                probability *= probabilities[aminoacid];
-
-                var matchTransition = transitions.GetValueOrDefault(TransitionEnum.Match);
-                var insertTransition = transitions.GetValueOrDefault(TransitionEnum.Insert);
-                var deleteTransition = transitions.GetValueOrDefault(TransitionEnum.Delete);
-                probability *= matchTransition > 0 ? matchTransition : 1;
-                probability *= insertTransition > 0 ? insertTransition : 1;
-                probability *= deleteTransition > 0 ? deleteTransition : 1;
+                var state = States[i];
+                probability *= GetProbabilityValue(state.Probabilities, aminoacid) * GetTransitionValue(state.Transitions);
             }
 
             return probability;
+        }
+
+        private double GetProbabilityValue(Dictionary<char, double> probabilities, char aminoacid)
+        {
+            var probability = probabilities[aminoacid];
+            return probability > 0 ? probability : 1;
+        }
+
+        private double GetTransitionValue(Dictionary<TransitionEnum, double> transitions)
+        {
+            if (transitions == null)
+                return 1;
+
+            var matchTransition = transitions.GetValueOrDefault(TransitionEnum.Match);
+            var deleteTransition = transitions.GetValueOrDefault(TransitionEnum.Delete);
+            var insertTransition = transitions.GetValueOrDefault(TransitionEnum.Insert);
+
+            return ((matchTransition > 0) ? matchTransition : 1) * ((deleteTransition > 0) ? deleteTransition : 1) * ((insertTransition > 0) ? insertTransition : 1);
         }
 
         public double CalculateLogOdds(char[] sequence)
