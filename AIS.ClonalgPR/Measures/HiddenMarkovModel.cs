@@ -32,14 +32,14 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateRegions()
         {
-            var qtdSequences = Sequences.Count;
+            var sequencesAmount = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
 
             for (int i = 0; i < sequenceSize; i++)
             {
                 var gap = 0;
 
-                for (int j = 0; j < qtdSequences; j++)
+                for (int j = 0; j < sequencesAmount; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var symbol = sequence[i];
@@ -60,45 +60,55 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateProbabilities()
         {
-            var qtdSequences = Sequences.Count;
+            var sequencesAmount = Sequences.Count;
             var sequenceSize = Sequences[0].Length;
 
             for (int i = 0; i < sequenceSize; i++)
             {
-                var symbols = new Dictionary<char, int>()
-                {
-                    { 'A', 0 },
-                    { 'C', 0 },
-                    { 'G', 0 },
-                    { 'T', 0 },
-                };
-                var probabilities = new Dictionary<char, double>()
-                {
-                    { 'A', 0 },
-                    { 'C', 0 },
-                    { 'G', 0 },
-                    { 'T', 0 },
-                };
+                var symbols = InitSymbols();
+                var probabilities = InitProbabilities();
                 var state = GetState(Regions[i]);
 
-                for (int j = 0; j < qtdSequences; j++)
+                for (int j = 0; j < sequencesAmount; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var symbol = sequence[i];
 
                     if (state == StateEnum.Match)
-                        CreateProbabilityMatchState(symbol, qtdSequences, ref symbols, ref probabilities);
+                        CreateProbabilityMatchState(symbol, sequencesAmount, ref symbols, ref probabilities);
                     else if (state == StateEnum.Delete)
                         continue;
                     else if (state == StateEnum.Insert)
                     {
                         var length = ReturnsLengthInsertTransitionState(i);
-                        CreateProbabilityInsertState(length, qtdSequences, ref i, ref symbols, ref probabilities);
+                        CreateProbabilityInsertState(length, sequencesAmount, ref i, ref symbols, ref probabilities);
                         break;
                     }
                 }
                 Probabilities.Add(probabilities);
             }
+        }
+
+        private Dictionary<char, int> InitSymbols()
+        {
+            return new Dictionary<char, int>()
+                {
+                    { 'A', 0 },
+                    { 'C', 0 },
+                    { 'G', 0 },
+                    { 'T', 0 },
+                };
+        }
+
+        private Dictionary<char, double> InitProbabilities()
+        {
+            return new Dictionary<char, double>()
+                {
+                    { 'A', 0.0 },
+                    { 'C', 0.0 },
+                    { 'G', 0.0 },
+                    { 'T', 0.0 },
+                };
         }
 
         private void CreateTransitions()
@@ -116,11 +126,11 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateInsertionOrMatchState(ref int index)
         {
-            var qtdSequences = Sequences.Count;
+            var sequencesAmount = Sequences.Count;
             var previousIndex = index;
             var length = ReturnsLengthInsertTransitionState(index);
-            var quantity = AmountSequencesInsertState(previousIndex, length, qtdSequences);
-            var insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(qtdSequences);
+            var quantity = AmountSequencesInsertState(previousIndex, length, sequencesAmount);
+            var insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(sequencesAmount);
             var matchPercentage = 1.0 - insertionPercentage;
 
             Transitions.Add(new Dictionary<StateEnum, double>()
@@ -151,8 +161,8 @@ namespace AIS.ClonalgPR.Measures
                 }
             }
 
-            var qtdSequences = Sequences.Count;
-            var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(qtdSequences);
+            var sequencesAmount = Sequences.Count;
+            var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(sequencesAmount);
             var matchPercentage = 1.0 - insertionPercentage;
 
             Transitions.Add(new Dictionary<StateEnum, double>()
@@ -165,13 +175,13 @@ namespace AIS.ClonalgPR.Measures
             index += length - 1;
         }
 
-        private int AmountSequencesInsertState(int index, int length, int qtdSequences)
+        private int AmountSequencesInsertState(int index, int length, int sequencesAmount)
         {
             var indexes = new List<int>();
 
             for (int i = index; i < index + length; i++)
             {
-                for (int j = 0; j < qtdSequences; j++)
+                for (int j = 0; j < sequencesAmount; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var symbol = sequence[i];
@@ -207,7 +217,7 @@ namespace AIS.ClonalgPR.Measures
                 States.Add(new State()
                 {
                     Probabilities = Probabilities[i],
-                    Transitions = (i != qtdStates -1) ? Transitions[i] : null
+                    Transitions = (i != qtdStates - 1) ? Transitions[i] : null
                 });
             }
         }
@@ -236,25 +246,25 @@ namespace AIS.ClonalgPR.Measures
             return count;
         }
 
-        private void CreateProbabilityMatchState(char symbol, int qtdSequences, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityMatchState(char symbol, int sequencesAmount, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             if (Constants.Gaps.Contains(symbol))
                 return;
 
             symbols[symbol] += 1;
-            probabilities[symbol] = (double)symbols[symbol] / qtdSequences;
+            probabilities[symbol] = (double)symbols[symbol] / sequencesAmount;
         }
 
-        private void CreateProbabilityInsertState(int length, int qtdSequences, ref int index, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityInsertState(int length, int sequencesAmount, ref int index, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             int i = 0;
             for (i = index; i < index + length; i++)
             {
-                for (int j = 0; j < qtdSequences; j++)
+                for (int j = 0; j < sequencesAmount; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
                     var symbol = sequence[i];
-                    CreateProbabilityMatchState(symbol, qtdSequences, ref symbols, ref probabilities);
+                    CreateProbabilityMatchState(symbol, sequencesAmount, ref symbols, ref probabilities);
                 }
             }
             index = i - 1;
