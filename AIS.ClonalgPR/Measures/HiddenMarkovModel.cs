@@ -42,9 +42,9 @@ namespace AIS.ClonalgPR.Measures
                 for (int j = 0; j < qtdSequences; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
+                    var symbol = sequence[i];
 
-                    if (Constants.Gaps.Contains(aminoacid))
+                    if (Constants.Gaps.Contains(symbol))
                         gap++;
                 }
 
@@ -65,7 +65,7 @@ namespace AIS.ClonalgPR.Measures
 
             for (int i = 0; i < sequenceSize; i++)
             {
-                var aminoacids = new Dictionary<char, int>()
+                var symbols = new Dictionary<char, int>()
                 {
                     { 'A', 0 },
                     { 'C', 0 },
@@ -84,16 +84,16 @@ namespace AIS.ClonalgPR.Measures
                 for (int j = 0; j < qtdSequences; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
+                    var symbol = sequence[i];
 
                     if (state == TransitionEnum.Match)
-                        CreateProbabilityMatchState(aminoacid, qtdSequences, ref aminoacids, ref probabilities);
+                        CreateProbabilityMatchState(symbol, qtdSequences, ref symbols, ref probabilities);
                     else if (state == TransitionEnum.Delete)
                         continue;
                     else if (state == TransitionEnum.Insert)
                     {
                         var length = ReturnsLengthInsertTransitionState(i);
-                        CreateProbabilityInsertState(length, qtdSequences, ref i, ref aminoacids, ref probabilities);
+                        CreateProbabilityInsertState(length, qtdSequences, ref i, ref symbols, ref probabilities);
                         break;
                     }
                 }
@@ -142,8 +142,8 @@ namespace AIS.ClonalgPR.Measures
                 for (int j = 0; j < length; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
-                    if (!Constants.Gaps.Contains(aminoacid))
+                    var symbol = sequence[i];
+                    if (!Constants.Gaps.Contains(symbol))
                     {
                         count++;
                         break;
@@ -174,9 +174,9 @@ namespace AIS.ClonalgPR.Measures
                 for (int j = 0; j < qtdSequences; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
+                    var symbol = sequence[i];
 
-                    if (!Constants.Gaps.Contains(aminoacid) && !indexes.Contains(j))
+                    if (!Constants.Gaps.Contains(symbol) && !indexes.Contains(j))
                         indexes.Add(j);
                 }
             }
@@ -241,16 +241,16 @@ namespace AIS.ClonalgPR.Measures
             return count;
         }
 
-        private void CreateProbabilityMatchState(char aminoacid, int qtdSequences, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityMatchState(char symbol, int qtdSequences, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
-            if (Constants.Gaps.Contains(aminoacid))
+            if (Constants.Gaps.Contains(symbol))
                 return;
 
-            aminoacids[aminoacid] += 1;
-            probabilities[aminoacid] = (double)aminoacids[aminoacid] / qtdSequences;
+            symbols[symbol] += 1;
+            probabilities[symbol] = (double)symbols[symbol] / qtdSequences;
         }
 
-        private void CreateProbabilityInsertState(int length, int qtdSequences, ref int index, ref Dictionary<char, int> aminoacids, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityInsertState(int length, int qtdSequences, ref int index, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             int i = 0;
             for (i = index; i < index + length; i++)
@@ -258,8 +258,8 @@ namespace AIS.ClonalgPR.Measures
                 for (int j = 0; j < qtdSequences; j++)
                 {
                     var sequence = Sequences[j].ToCharArray();
-                    var aminoacid = sequence[i];
-                    CreateProbabilityMatchState(aminoacid, qtdSequences, ref aminoacids, ref probabilities);
+                    var symbol = sequence[i];
+                    CreateProbabilityMatchState(symbol, qtdSequences, ref symbols, ref probabilities);
                 }
             }
             index = i - 1;
@@ -281,12 +281,12 @@ namespace AIS.ClonalgPR.Measures
             var probability = 1.0;
             for (int i = 0; i < States.Count; i++)
             {
-                var aminoacid = sequence[i];
-                if (Constants.Gaps.Contains(aminoacid))
+                var symbol = sequence[i];
+                if (Constants.Gaps.Contains(symbol))
                     continue;
 
                 var state = States[i];
-                probability *= GetProbabilityValue(state.Probabilities, aminoacid) * GetTransitionValue(state.Transitions);
+                probability *= GetProbabilityValue(state.Probabilities, symbol) * GetTransitionValue(state.Transitions);
             }
 
             return probability;
@@ -298,9 +298,9 @@ namespace AIS.ClonalgPR.Measures
             return Math.Log(probability) / NullModelValue(Constants.Aminoacids.Length, sequence.Length);
         }
 
-        private double GetProbabilityValue(Dictionary<char, double> probabilities, char aminoacid)
+        private double GetProbabilityValue(Dictionary<char, double> probabilities, char symbol)
         {
-            var probability = probabilities[aminoacid];
+            var probability = probabilities[symbol];
             return probability > 0 ? probability : 1;
         }
 
