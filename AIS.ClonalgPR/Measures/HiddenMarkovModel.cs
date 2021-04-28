@@ -292,6 +292,12 @@ namespace AIS.ClonalgPR.Measures
             return probability;
         }
 
+        public double CalculateLogOdds(char[] sequence)
+        {
+            var probability = CalculateTotalProbability(sequence);
+            return Math.Log(probability) / NullModelValue(Constants.Aminoacids.Length, sequence.Length);
+        }
+
         private double GetProbabilityValue(Dictionary<char, double> probabilities, char aminoacid)
         {
             var probability = probabilities[aminoacid];
@@ -308,12 +314,6 @@ namespace AIS.ClonalgPR.Measures
             var insertTransition = transitions.GetValueOrDefault(TransitionEnum.Insert);
 
             return ((matchTransition > 0) ? matchTransition : 1) * ((deleteTransition > 0) ? deleteTransition : 1) * ((insertTransition > 0) ? insertTransition : 1);
-        }
-
-        public double CalculateLogOdds(char[] sequence)
-        {
-            var probability = CalculateTotalProbability(sequence);
-            return Math.Log(probability) / NullModelValue(Constants.Aminoacids.Length, sequence.Length);
         }
     }
 }
