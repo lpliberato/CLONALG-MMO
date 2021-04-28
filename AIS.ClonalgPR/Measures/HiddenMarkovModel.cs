@@ -129,8 +129,8 @@ namespace AIS.ClonalgPR.Measures
             var sequencesAmount = Sequences.Count;
             var previousIndex = index;
             var length = ReturnsLengthInsertTransitionState(index);
-            var quantity = AmountSequencesInsertState(previousIndex, length, sequencesAmount);
-            var insertionPercentage = Convert.ToDouble(quantity) / Convert.ToDouble(sequencesAmount);
+            var amountSequencesInsertState = AmountSequencesInsertState(previousIndex, length, sequencesAmount);
+            var insertionPercentage = Convert.ToDouble(amountSequencesInsertState) / Convert.ToDouble(sequencesAmount);
             var matchPercentage = 1.0 - insertionPercentage;
 
             Transitions.Add(new Dictionary<StateEnum, double>()
