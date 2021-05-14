@@ -7,85 +7,73 @@ namespace AIS.ClonalgPR.Measures
 {
     public class HiddenMarkovModel
     {
-        private List<string> Sequences { get; set; }
-        private List<Dictionary<char, double>> Probabilities { get; set; }
-        private List<Dictionary<StateEnum, double>> Transitions { get; set; }
-        private List<Dictionary<StateEnum, int>> Regions { get; set; }
+        private List<string> Observations { get; set; }
         private List<State> States { get; set; }
 
-        public HiddenMarkovModel(List<string> sequences)
+        public HiddenMarkovModel(List<string> observations)
         {
-            Sequences = sequences;
-            Probabilities = new List<Dictionary<char, double>>();
-            Transitions = new List<Dictionary<StateEnum, double>>();
-            Regions = new List<Dictionary<StateEnum, int>>();
+            Observations = observations;
             States = new List<State>();
         }
 
         public void Train()
         {
-            CreateRegions();
+            CreateStates();
             CreateProbabilities();
             CreateTransitions();
-            CreateStates();
         }
 
-        private void CreateRegions()
+        private void CreateStates()
         {
-            var sequencesAmount = Sequences.Count;
-            var sequenceSize = Sequences[0].Length;
+            var observationsAmount = Observations.Count;
+            var observationSize = Observations[0].Length;
 
-            for (int i = 0; i < sequenceSize; i++)
+            for (int i = 0; i < observationSize; i++)
             {
                 var gap = 0;
+                var match = 0;
 
-                for (int j = 0; j < sequencesAmount; j++)
+                for (int j = 0; j < observationsAmount; j++)
                 {
-                    var sequence = Sequences[j].ToCharArray();
+                    var sequence = Observations[j].ToCharArray();
                     var symbol = sequence[i];
 
                     if (Constants.Gaps.Contains(symbol))
                         gap++;
+                    else
+                        match++;
                 }
 
-                Regions.Add(
-                    new Dictionary<StateEnum, int>()
-                    {
-                        { StateEnum.Delete, gap == 1 ? 1 : 0 },
-                        { StateEnum.Match, gap == 0 ? 1 : 0 },
-                        { StateEnum.Insert, gap > 1 ? 1 : 0 }
-                    });
+                if (match > 0 && gap == 0)
+                    States.Add(new State() { Name = StateEnum.Match });
+                else if (match > 0 && gap > 0 && match > gap)
+                    States.Add(new State() { Name = StateEnum.Delete });
+                else if (match > 0 && gap > 0 && match < gap)
+                    States.Add(new State() { Name = StateEnum.Insert });
             }
         }
 
         private void CreateProbabilities()
         {
-            var sequencesAmount = Sequences.Count;
-            var sequenceSize = Sequences[0].Length;
+            var observationSize = Observations.Count;
 
-            for (int i = 0; i < sequenceSize; i++)
+            for (int i = 0; i < States.Count; i++)
             {
                 var symbols = InitSymbols();
                 var probabilities = InitProbabilities();
-                var state = GetState(Regions[i]);
+                var state = States[i];
 
-                for (int j = 0; j < sequencesAmount; j++)
+                for (int j = 0; j < observationSize; j++)
                 {
-                    var sequence = Sequences[j].ToCharArray();
+                    var sequence = Observations[j].ToCharArray();
                     var symbol = sequence[i];
 
-                    if (state == StateEnum.Match)
-                        CreateProbabilityMatchState(symbol, sequencesAmount, ref symbols, ref probabilities);
-                    else if (state == StateEnum.Delete)
+                    if (state.Name == StateEnum.Match || state.Name == StateEnum.Insert)
+                        CreateProbabilityPerState(symbol, observationSize, ref symbols, ref probabilities);
+                    else if (state.Name == StateEnum.Delete)
                         continue;
-                    else if (state == StateEnum.Insert)
-                    {
-                        var length = ReturnsLengthInsertTransitionState(i);
-                        CreateProbabilityInsertState(length, sequencesAmount, ref i, ref symbols, ref probabilities);
-                        break;
-                    }
                 }
-                Probabilities.Add(probabilities);
+                state.EmissionProbabilities = probabilities;
             }
         }
 
@@ -113,212 +101,109 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateTransitions()
         {
-            for (int i = 1; i < Regions.Count - 1; i++)
+            for (int i = 0; i < States.Count - 1; i++)
             {
-                var state = GetState(Regions[i]);
+                State state = States[i];
 
-                if (state == StateEnum.Match || state == StateEnum.Insert)
-                    CreateInsertionOrMatchState(ref i);
-                else if (state == StateEnum.Delete)
-                    continue;
+                if (state.Name == StateEnum.Match)
+                    CreateMatchState(state);
+                else if (state.Name == StateEnum.Insert)
+                    CreateInsertState(i, state);
+                else if (state.Name == StateEnum.Delete)
+                    CreateDeleteState(state);
             }
         }
 
-        private void CreateInsertionOrMatchState(ref int index)
+        private void CreateMatchState(State state)
         {
-            var sequencesAmount = Sequences.Count;
-            var previousIndex = index;
-            var length = ReturnsLengthInsertTransitionState(index);
-            var amountSequencesInsertState = AmountSequencesInsertState(previousIndex, length, sequencesAmount);
-            var insertionPercentage = Convert.ToDouble(amountSequencesInsertState) / Convert.ToDouble(sequencesAmount);
+            state.TransitionProbabilities = new Dictionary<StateEnum, double>()
+                        {
+                            { StateEnum.Match, 1.0 },
+                            { StateEnum.Insert, 0.0 },
+                            { StateEnum.Delete, 0.0 }
+                        };
+        }
+
+        private void CreateInsertState(int index, State state)
+        {
+            var count = AmountSymbolsInsertState(index);
+            var observationsAmount = Observations.Count;
+            var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(observationsAmount);
             var matchPercentage = 1.0 - insertionPercentage;
 
-            Transitions.Add(new Dictionary<StateEnum, double>()
+            state.TransitionProbabilities = new Dictionary<StateEnum, double>()
                         {
                             { StateEnum.Match, matchPercentage },
                             { StateEnum.Insert, insertionPercentage },
                             { StateEnum.Delete, 0.0 }
-                        });
-
-            if (insertionPercentage > 0)
-                CreateInsertionState(length, ref index);
+                        };
         }
 
-        private void CreateInsertionState(int length, ref int index)
+        private void CreateDeleteState(State state)
         {
-            var count = 0;
-            for (int i = index + 1; i < index + length; i++)
-            {
-                for (int j = 0; j < length; j++)
-                {
-                    var sequence = Sequences[j].ToCharArray();
-                    var symbol = sequence[i];
-                    if (!Constants.Gaps.Contains(symbol))
-                    {
-                        count++;
-                        break;
-                    }
-                }
-            }
-
-            var sequencesAmount = Sequences.Count;
-            var insertionPercentage = Convert.ToDouble(count) / Convert.ToDouble(sequencesAmount);
-            var matchPercentage = 1.0 - insertionPercentage;
-
-            Transitions.Add(new Dictionary<StateEnum, double>()
+            state.TransitionProbabilities = new Dictionary<StateEnum, double>()
                         {
-                            { StateEnum.Match, matchPercentage },
-                            { StateEnum.Insert, insertionPercentage },
+                            { StateEnum.Match, 0.0 },
+                            { StateEnum.Insert, 0.0 },
                             { StateEnum.Delete, 0.0 }
-                        });
-
-            index += length - 1;
+                        };
         }
 
-        private int AmountSequencesInsertState(int index, int length, int sequencesAmount)
-        {
-            var indexes = new List<int>();
-
-            for (int i = index; i < index + length; i++)
-            {
-                for (int j = 0; j < sequencesAmount; j++)
-                {
-                    var sequence = Sequences[j].ToCharArray();
-                    var symbol = sequence[i];
-
-                    if (!Constants.Gaps.Contains(symbol) && !indexes.Contains(j))
-                        indexes.Add(j);
-                }
-            }
-
-            return indexes.Count;
-        }
-
-        private int ReturnsLengthInsertTransitionState(int index)
+        private int AmountSymbolsInsertState(int index)
         {
             var count = 0;
-            for (int i = index; i < Regions.Count; i++)
+            for (int i = 0; i < Observations.Count; i++)
             {
-                var state = GetState(Regions[i]);
-                if (state != StateEnum.Insert)
-                    break;
-                count++;
-            }
-
-            return count;
-        }
-
-        private void CreateStates()
-        {
-            var qtdStates = GetAmountOfStates();
-
-            for (int i = 0; i < qtdStates; i++)
-            {
-                States.Add(new State()
-                {
-                    Probabilities = Probabilities[i],
-                    Transitions = (i != qtdStates - 1) ? Transitions[i] : null
-                });
-            }
-        }
-
-        private int GetAmountOfStates()
-        {
-            var count = 0;
-            var previousStateIsInsert = false;
-
-            for (int i = 0; i < Regions.Count; i++)
-            {
-                var state = GetState(Regions[i]);
-
-                if (state == StateEnum.Match || state == StateEnum.Delete)
-                {
+                var observation = Observations[i].ToCharArray();
+                var symbol = observation[index];
+                if (!Constants.Gaps.Contains(symbol))
                     count++;
-                    previousStateIsInsert = false;
-                }
-                else if (state == StateEnum.Insert)
-                {
-                    if (!previousStateIsInsert)
-                        count++;
-                    previousStateIsInsert = true;
-                }
             }
+
             return count;
         }
 
-        private void CreateProbabilityMatchState(char symbol, int sequencesAmount, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void CreateProbabilityPerState(char symbol, int observationsAmount, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             if (Constants.Gaps.Contains(symbol))
                 return;
 
             symbols[symbol] += 1;
-            probabilities[symbol] = (double)symbols[symbol] / sequencesAmount;
+            probabilities[symbol] = (double)symbols[symbol] / observationsAmount;
         }
 
-        private void CreateProbabilityInsertState(int length, int sequencesAmount, ref int index, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private static double NullModelValue(int alphabetSize, int observationsSize)
         {
-            int i = 0;
-            for (i = index; i < index + length; i++)
+            return Math.Pow((double)1 / alphabetSize, observationsSize);
+        }
+
+        public double CalculateTotalProbability(List<char> observations)
+        {
+            return ForwardViterbi(observations);
+        }
+
+        public double CalculateLogOdds(List<char> observations)
+        {
+            var probability = CalculateTotalProbability(observations);
+            return Math.Log(probability) / NullModelValue(Constants.DNA.Length, observations.Count);
+        }
+
+        private double ForwardViterbi(List<char> observations)
+        {
+            var prob = 1d;
+
+            for (int i = 0; i < observations.Count; i++)
             {
-                for (int j = 0; j < sequencesAmount; j++)
-                {
-                    var sequence = Sequences[j].ToCharArray();
-                    var symbol = sequence[i];
-                    CreateProbabilityMatchState(symbol, sequencesAmount, ref symbols, ref probabilities);
-                }
-            }
-            index = i - 1;
-        }
-
-        private StateEnum GetState(Dictionary<StateEnum, int> region)
-        {
-            return region.GetValueOrDefault(StateEnum.Delete) == 1 ? StateEnum.Delete :
-                region.GetValueOrDefault(StateEnum.Insert) == 1 ? StateEnum.Insert : StateEnum.Match;
-        }
-
-        private static double NullModelValue(int alphabetSize, int sequenceSize)
-        {
-            return Math.Pow((double)1 / alphabetSize, sequenceSize);
-        }
-
-        public double CalculateTotalProbability(char[] sequence)
-        {
-            var probability = 1.0;
-            for (int i = 0; i < States.Count; i++)
-            {
-                var symbol = sequence[i];
-                if (Constants.Gaps.Contains(symbol))
-                    continue;
-
+                var symbol = observations[i];
                 var state = States[i];
-                probability *= GetProbabilityValue(state.Probabilities, symbol) * GetTransitionValue(state.Transitions);
+                var emissionProbability = Constants.Gaps.Contains(symbol) ? 1 : state.EmissionProbabilities[symbol];
+                var transitionProbabilities = state.TransitionProbabilities != null ? state.TransitionProbabilities[state.Name] : 1;
+                var p = emissionProbability > 0 ? emissionProbability : 1 * transitionProbabilities > 0 ? transitionProbabilities : 1;
+
+                prob *= p;
             }
 
-            return probability;
-        }
-
-        public double CalculateLogOdds(char[] sequence)
-        {
-            var probability = CalculateTotalProbability(sequence);
-            return Math.Log(probability) / NullModelValue(Constants.Aminoacids.Length, sequence.Length);
-        }
-
-        private double GetProbabilityValue(Dictionary<char, double> probabilities, char symbol)
-        {
-            var probability = probabilities[symbol];
-            return probability > 0 ? probability : 1;
-        }
-
-        private double GetTransitionValue(Dictionary<StateEnum, double> transitions)
-        {
-            if (transitions == null)
-                return 1;
-
-            var matchTransition = transitions.GetValueOrDefault(StateEnum.Match);
-            var deleteTransition = transitions.GetValueOrDefault(StateEnum.Delete);
-            var insertTransition = transitions.GetValueOrDefault(StateEnum.Insert);
-
-            return ((matchTransition > 0) ? matchTransition : 1) * ((deleteTransition > 0) ? deleteTransition : 1) * ((insertTransition > 0) ? insertTransition : 1);
+            return prob;
         }
     }
 }

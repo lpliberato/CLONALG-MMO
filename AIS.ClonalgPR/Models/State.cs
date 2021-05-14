@@ -4,8 +4,8 @@ namespace AIS.ClonalgPR.Models
 {
     public class State
     {
-        public StateEnum Type { get; set; }
-        public Dictionary<char, double> Probabilities { get; set; }
-        public Dictionary<StateEnum, double>Transitions { get; set; }
+        public StateEnum Name { get; set; }
+        public Dictionary<char, double> EmissionProbabilities { get; set; }
+        public Dictionary<StateEnum, double> TransitionProbabilities { get; set; }
     }
 }

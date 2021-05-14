@@ -20,8 +20,8 @@ namespace AIS.ClonalgPR
             //SaveResult(clonalgPR.Results);
             var markov = new HiddenMarkovModel(antigens.Select(s => s.Sequence).ToList());
             markov.Train();
-            Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[] { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
-            Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[] { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
+            Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new List<char>() { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
+            Console.WriteLine("Odds = " + markov.CalculateLogOdds(new List<char>() { 'A', 'C', 'A', 'C', '-', '-', 'A', 'T', 'C' }));
         }
 
         private static List<string> GetSequencesByAntigens(List<Antigen> antigens)
