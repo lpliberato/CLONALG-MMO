@@ -142,8 +142,6 @@ namespace AIS.ClonalgPR.Measures
             if (currentIndex == States.Count) return;
 
             State state = States[currentIndex];
-
-            var indexForObservations = state.Name == StateEnum.Insert ? currentIndex : index;
             CreateTransitionsStates(index, currentIndex, state);
 
             var indexToTransition = index >= Observations[0].Length - 2 ? currentIndex : index;
