@@ -30,18 +30,40 @@ namespace AIS.ClonalgPR.Measures
                 return;
 
             var observationsAmount = Observations.Count;
-            var symbolsAmount = GetAmountOfSymbolsInTheState(index);
+            var symbolsAmount = GetAmountOfMatches(index);
 
             if (symbolsAmount == observationsAmount)
-                States.Add(new State() { Name = StateEnum.Match, EmissionProbabilities = InitEmissionProbabilities(), TransitionProbabilities = InitTransitionProbabilities() });
+                States.Add(new State() 
+                { 
+                    Name = StateEnum.Match, 
+                    EmissionProbabilities = InitEmissionProbabilities(), 
+                    TransitionProbabilities = InitTransitionProbabilities() 
+                });
             else
             {
-                symbolsAmount = GetAmountOfSymbolsInTheState(index + 1);
+                symbolsAmount = GetAmountOfMatches(index + 1);
                 if (symbolsAmount == observationsAmount)
-                    States.Add(new State() { Name = StateEnum.Insert, EmissionProbabilities = InitEmissionProbabilities(), TransitionProbabilities = InitTransitionProbabilities() });
+                    States.Add(new State() 
+                    { 
+                        Name = StateEnum.Insert, 
+                        EmissionProbabilities = InitEmissionProbabilities(), 
+                        TransitionProbabilities = InitTransitionProbabilities() 
+                    });
             }
 
             CreateStates(index + 1);
+        }
+
+        private void SetInsertStateCounterForProbabilities(ref int insertStateCounter, int index, int observationsAmount)
+        {
+            var symbolsAmount = GetAmountOfMatches(index);
+            if (symbolsAmount != observationsAmount)
+            {
+                insertStateCounter++;
+                var nextSymbolsAmount = GetAmountOfMatches(index + 1);
+                if (nextSymbolsAmount == observationsAmount)
+                    insertStateCounter--;
+            }
         }
 
         private void CreateProbabilities(int index = 0, int insertStateCounter = 0)
@@ -53,17 +75,7 @@ namespace AIS.ClonalgPR.Measures
             var observationsAmount = Observations.Count;
             var symbols = InitSymbols();
             var probabilities = InitEmissionProbabilities();
-            var symbolsAmount = GetAmountOfSymbolsInTheState(index);
-            State state;
-
-            state = States[index - insertStateCounter];
-            if (symbolsAmount != observationsAmount)
-            {
-                insertStateCounter++;
-                var nextSymbolsAmount = GetAmountOfSymbolsInTheState(index + 1);
-                if (nextSymbolsAmount == observationsAmount)
-                    insertStateCounter--;
-            }
+            State state = States[index - insertStateCounter];
 
             for (int j = 0; j < observationsAmount; j++)
             {
@@ -73,6 +85,7 @@ namespace AIS.ClonalgPR.Measures
             }
 
             SetProbabilities(state.EmissionProbabilities, probabilities);
+            SetInsertStateCounterForProbabilities(ref insertStateCounter, index, observationsAmount);
             CreateProbabilities(index + 1, insertStateCounter);
         }
 
@@ -97,10 +110,10 @@ namespace AIS.ClonalgPR.Measures
         {
             return new Dictionary<char, double>()
                 {
-                    { 'A', 0.0 },
-                    { 'C', 0.0 },
-                    { 'G', 0.0 },
-                    { 'T', 0.0 },
+                    { 'A', 0d },
+                    { 'C', 0d },
+                    { 'G', 0d },
+                    { 'T', 0d },
                 };
         }
 
@@ -114,7 +127,31 @@ namespace AIS.ClonalgPR.Measures
             };
         }
 
-        private int GetAmountOfSymbolsInTheState(int index)
+        private void SetInsertStateCounterForTransitions(ref int insertStateCounter, int index, int observationsAmount)
+        {
+            var symbolsAmount = GetAmountOfMatches(index);
+            var nextSymbolsAmount = GetAmountOfMatches(index + 1);
+
+            if (symbolsAmount != observationsAmount && nextSymbolsAmount != observationsAmount)
+                insertStateCounter++;
+        }
+
+        private void CreateTransitions(int index = 0, int insertStateCounter = 0)
+        {
+            var currentIndex = index - insertStateCounter;
+            if (currentIndex == States.Count) return;
+
+            State state = States[currentIndex];
+
+            var indexForObservations = state.Name == StateEnum.Insert ? currentIndex : index;
+            CreateTransitionsStates(index, currentIndex, state);
+
+            var indexToTransition = index >= Observations[0].Length - 2 ? currentIndex : index;
+            SetInsertStateCounterForTransitions(ref insertStateCounter, indexToTransition, Observations.Count);
+            CreateTransitions(index + 1, insertStateCounter);
+        }
+
+        private int GetAmountOfMatches(int index)
         {
             var count = 0;
             for (int i = 0; i < Observations.Count; i++)
@@ -129,26 +166,65 @@ namespace AIS.ClonalgPR.Measures
             return count;
         }
 
-        private void CreateTransitions()
+        private int GetAmountOfInserts(int index)
         {
-            for (int i = 0; i < States.Count - 1; i++)
-            {
-                State state = States[i];
+            var indexes = new List<int>();
+            var observationSize = Observations[0].Length;
+            var observationsAmount = Observations.Count;
+            var matchCount = 0;
+            var gapCount = 0;
 
-                if (state.Name == StateEnum.Match || state.Name == StateEnum.Insert)
-                    CreateTransitionsStates(i, state);
-                else if (state.Name == StateEnum.Delete)
-                    continue;
+            for (int i = index; i < observationSize; i++)
+            {
+                for (int j = 0; j < observationsAmount; j++)
+                {
+                    var observation = Observations[j];
+                    var symbol = observation[i];
+
+                    if (!Constants.Gaps.Contains(symbol))
+                    {
+                        matchCount++;
+                        if (!indexes.Contains(j))
+                            indexes.Add(j);
+                    }
+                    else
+                        gapCount++;
+                }
+                if (matchCount == observationsAmount) break;
             }
+
+            return indexes.Count;
         }
 
-        private void CreateTransitionsStates(int index, State state)
+        private void CreateTransitionsStates(int index, int currentIndex, State currentState)
         {
-            var symbolsAmount = GetAmountOfSymbolsInTheState(index + 1);
-            var percentageOfMachState = Convert.ToDouble(symbolsAmount) / Convert.ToDouble(Observations.Count);
-            var percentageOfInsertState = 1d - percentageOfMachState;
+            if (currentIndex >= States.Count) return;
 
-            state.TransitionProbabilities = new Dictionary<StateEnum, double>()
+            var nextState = currentIndex < States.Count - 1 ? States[currentIndex + 1] : null;
+            int symbolsAmount;
+            double percentageOfMachState = 0d;
+            double percentageOfInsertState = 0d;
+
+            if (currentState.Name == StateEnum.Match && (nextState == null || nextState.Name == StateEnum.Match))
+            {
+                symbolsAmount = GetAmountOfMatches(index);
+                percentageOfMachState = Convert.ToDouble(symbolsAmount) / Convert.ToDouble(Observations.Count);
+                percentageOfInsertState = 1d - percentageOfMachState;
+            }
+            else if (currentState.Name == StateEnum.Match && nextState.Name == StateEnum.Insert)
+            {
+                symbolsAmount = GetAmountOfInserts(currentIndex + 1);
+                percentageOfInsertState = Convert.ToDouble(symbolsAmount) / Convert.ToDouble(Observations.Count);
+                percentageOfMachState = 1d - percentageOfInsertState;
+            }
+            else if (currentState.Name == StateEnum.Insert && nextState.Name == StateEnum.Match)
+            {
+                symbolsAmount = GetAmountOfInserts(currentIndex);
+                percentageOfMachState = Convert.ToDouble(symbolsAmount) / Convert.ToDouble(Observations.Count);
+                percentageOfInsertState = 1d - percentageOfMachState;
+            }
+
+            currentState.TransitionProbabilities = new Dictionary<StateEnum, double>()
                         {
                             { StateEnum.Match, percentageOfMachState },
                             { StateEnum.Insert, percentageOfInsertState },
@@ -167,7 +243,7 @@ namespace AIS.ClonalgPR.Measures
 
         private static double NullModelValue(int alphabetSize, int observationsSize)
         {
-            return Math.Pow((double)1 / alphabetSize, observationsSize);
+            return Math.Pow(1d / alphabetSize, observationsSize);
         }
 
         public double CalculateTotalProbability(List<char> observations)
@@ -178,42 +254,23 @@ namespace AIS.ClonalgPR.Measures
         public double CalculateLogOdds(List<char> observations)
         {
             var probability = CalculateTotalProbability(observations);
-            return Math.Log(probability) / NullModelValue(Constants.DNA.Length, observations.Count);
-        }
-
-        private List<int> GetIndexesInsertStates()
-        {
-            var indexes = new List<int>();
-            var observationSize = Observations[0].Length;
-            for (int i = 0; i < observationSize; i++)
-            {
-                var symbolsAmount = GetAmountOfSymbolsInTheState(i);
-                if (symbolsAmount != Observations.Count)
-                    indexes.Add(i);
-            }
-            return indexes;
+            return Math.Log(probability) - (observations.Count * Math.Log(1d / Constants.DNA.Length));
         }
 
         private double ForwardViterbi(List<char> observations)
         {
             var prob = 1d;
-            var insertStateCounter = 0;
-            var indexesInsertState = GetIndexesInsertStates();
-
             for (int i = 0; i < observations.Count; i++)
             {
-                if (indexesInsertState != null && indexesInsertState.Contains(i))
-                    insertStateCounter = indexesInsertState.Count - 1;
-
                 var symbol = observations[i];
-                var state = States[i - insertStateCounter];
+                var state = States[i];
                 var emissionProbability = 0d;
                 var transitionProbabilities = 0d;
 
                 if (state.TransitionProbabilities != null)
-                    transitionProbabilities = state.TransitionProbabilities[state.Name];
+                    transitionProbabilities = state.TransitionProbabilities.Max(m => m.Value);
 
-                if (!Constants.Gaps.Contains(symbol))
+                if (state.EmissionProbabilities != null)
                     emissionProbability = state.EmissionProbabilities[symbol];
 
                 if (emissionProbability > 0)
