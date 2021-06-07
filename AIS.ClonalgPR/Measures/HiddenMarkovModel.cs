@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace AIS.ClonalgPR.Measures
 {
-    public class HiddenMarkovModel
+    public class HiddenMarkovModel: IDistance
     {
         private List<string> Observations { get; set; }
         private List<State> States { get; set; }
@@ -239,28 +239,23 @@ namespace AIS.ClonalgPR.Measures
             probabilities[symbol] = (double)symbols[symbol] / observationsAmount;
         }
 
-        private static double NullModelValue(int alphabetSize, int observationsSize)
-        {
-            return Math.Pow(1d / alphabetSize, observationsSize);
-        }
-
-        public double CalculateTotalProbability(List<char> observations)
+        public double CalculateTotalProbability(char[] observations)
         {
             return ForwardViterbi(observations);
         }
 
-        public double CalculateLogOdds(List<char> observations)
+        public double CalculateLogOdds(char[] observations)
         {
             var probability = CalculateTotalProbability(observations);
-            return Math.Log(probability) - (observations.Count * Math.Log(1d / Constants.DNA.Length));
+            return Math.Log(probability) - (observations.Length * Math.Log(1d / Constants.DNA.Length));
         }
 
-        private double ForwardViterbi(List<char> observations)
+        private double ForwardViterbi(char[] observation)
         {
             var prob = 1d;
-            for (int i = 0; i < observations.Count; i++)
+            for (int i = 0; i < observation.Length; i++)
             {
-                var symbol = observations[i];
+                var symbol = observation[i];
                 var state = States[i];
                 var emissionProbability = 0d;
                 var transitionProbabilities = 0d;
@@ -279,6 +274,31 @@ namespace AIS.ClonalgPR.Measures
             }
 
             return prob;
+        }
+
+        public double Calculate(char[] sequenceA, char[] sequenceB)
+        {
+            return ForwardViterbi(sequenceB);
+        }
+
+        public double CalculateCloneRate(double affinity, int length)
+        {
+            return affinity;
+        }
+
+        public double CalculateMutationRate(double affinity, int length)
+        {
+            return 1 - affinity;
+        }
+
+        public bool IsBetterAffinity(double affinityAB, double affinityM)
+        {
+            return affinityAB > affinityM;
+        }
+
+        public List<Antibody> Order(List<Antibody> population, int numberHighAffinity)
+        {
+            return population.OrderByDescending(o => o.Affinity).Take(numberHighAffinity).ToList();
         }
     }
 }

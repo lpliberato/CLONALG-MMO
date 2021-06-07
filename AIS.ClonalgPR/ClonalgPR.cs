@@ -10,7 +10,6 @@ namespace AIS.ClonalgPR
     public class ClonalgPR
     {
         private List<Antibody> _memoryCells = new List<Antibody>();
-        private List<int> _antigensListSize = new List<int>();
         private Result _results = new Result();
         private IDistance _distance = null;
         private Stopwatch _watch = new Stopwatch();
@@ -41,25 +40,25 @@ namespace AIS.ClonalgPR
             foreach (var antibody in antibodies)
             {
                 var rate = _distance.CalculateCloneRate(antibody.Affinity, antibody.Length);
-                var clonesQtd = (int)(rate * antibody.Length);
-                for (int j = 0; j < clonesQtd; j++)
+                var clonesAmount = (int)(rate * antibody.Length);
+                for (int j = 0; j < clonesAmount; j++)
                     clones.Add(antibody.Clone());
             }
 
             return clones;
         }
 
-        private List<Antibody> Initialize(int qtdAntibody = 0, int sequenceSize = 0)
+        private List<Antibody> Initialize(int antibodyAmount = 0, int sequenceSize = 0)
         {
             var antibodies = new List<Antibody>();
 
-            if (qtdAntibody == 0)
-                qtdAntibody = Constants.Random.Next(Constants.qtdMinAntibodies, Constants.qtdMaxAntibodies);
+            if (antibodyAmount == 0)
+                antibodyAmount = Constants.Random.Next(Constants.minimalAmountOfAntibodies, Constants.maximumAmountOfAntibodies);
 
             if (sequenceSize == 0)
-                sequenceSize = Constants.Random.Next(Constants.sequenceMinSize, Constants.sequenceMaxSize);
+                sequenceSize = Constants.Random.Next(Constants.minimumAntibodySize, Constants.maximumAntibodySize);
 
-            for (int i = 0; i < qtdAntibody; i++)
+            for (int i = 0; i < antibodyAmount; i++)
             {
                 var sequence = "";
                 for (int j = 0; j < sequenceSize; j++)
@@ -102,11 +101,11 @@ namespace AIS.ClonalgPR
             foreach (var antibody in antibodies)
             {
                 var rate = _distance.CalculateMutationRate(antibody.Affinity, antibody.Length);
-                var mutateQtd = (int)(antibody.Length * rate);
+                var mutateAmount = (int)(antibody.Length * rate);
                 var sequenceIndex = Constants.Random.Next(0, antibody.Length);
                 var sequence = antibody.Sequence.ToCharArray();
 
-                for (int j = 0; j < mutateQtd; j++)
+                for (int j = 0; j < mutateAmount; j++)
                 {
                     var n = sequence[sequenceIndex];
                     var aminoacid = Constants.Aminoacids.Where(w => w != n).FirstOrDefault();
@@ -127,10 +126,10 @@ namespace AIS.ClonalgPR
             var antibodiesReplaced = antibodies.Take(inferiorLimit).ToList();
             antibodiesReplaced.ForEach(antibody => antibodies.Remove(antibody));
 
-            var qtdAntibodiesReplaced = antibodiesReplaced.Count();
-            if (qtdAntibodiesReplaced > 0)
+            var amountOfAntibodiesReplaced = antibodiesReplaced.Count();
+            if (amountOfAntibodiesReplaced > 0)
             {
-                var _antibodies = Initialize(qtdAntibody: qtdAntibodiesReplaced, sequenceSize: sequenceSize);
+                var _antibodies = Initialize(antibodyAmount: amountOfAntibodiesReplaced, sequenceSize: sequenceSize);
                 _antibodies.ForEach(p => antibodies.Add(p));
             }
             return antibodies;
