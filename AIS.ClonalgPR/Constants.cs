@@ -64,7 +64,7 @@ namespace AIS.ClonalgPR
             get
             {
                 if (_gaps == null)
-                    _gaps = new char[1] { '-' };
+                    _gaps = new char[4] { '.', '-', 'x', 'X' };
 
                 return _gaps;
             }

@@ -12,16 +12,28 @@ namespace AIS.ClonalgPR
         private List<Antibody> _memoryCells = new List<Antibody>();
         private Result _results = new Result();
         private IDistance _distance = null;
+        private List<Antigen> _antigens = new List<Antigen>();
+        private TypeBioSequence _typeBioSequence = TypeBioSequence.PROTEIN;
         private Stopwatch _watch = new Stopwatch();
-        private char[] charactersEscape = new char[4] { '.', '-', 'x', 'X' };
         public Result Results
         {
             get { return _results; }
         }
-
-        public ClonalgPR(IDistance distance)
+        public TypeBioSequence TypeBioSequence
         {
-            this._distance = distance;
+            get
+            {
+                var sequence = _antigens.Select(antigen => antigen.Sequence).ToList().ToString().ToArray();
+                return sequence.Contains('U') ? TypeBioSequence.RNA : 
+                    sequence.Where(antigen => !Constants.Gaps.Contains(antigen)).Distinct().Count() == 4 ? 
+                    TypeBioSequence.DNA : TypeBioSequence.PROTEIN; ;
+            }
+        }
+
+        public ClonalgPR(IDistance distance, List<Antigen> antigens)
+        {
+            _distance = distance;
+            _antigens = antigens;
         }
 
         private void Affinity(Antigen antigen, List<Antibody> antibodies)
@@ -67,7 +79,7 @@ namespace AIS.ClonalgPR
                 antibodies.Add(new Antibody
                 {
                     Sequence = sequence,
-                    Length = sequence.Where(w => !charactersEscape.Contains(w)).Count()
+                    Length = sequence.Where(w => !Constants.Gaps.Contains(w)).Count()
                 });
             }
 
@@ -140,7 +152,7 @@ namespace AIS.ClonalgPR
             return _distance.Order(population, numberHighAffinity);
         }
 
-        public void Execute(List<Antigen> antigens, int maximumIterations, int percentHighAffinity, int percentLowAffinity)
+        public void Execute(int maximumIterations, int percentHighAffinity, int percentLowAffinity)
         {
             StartTimer();
             var sequenceSize = Constants.Random.Next(10, 20);
