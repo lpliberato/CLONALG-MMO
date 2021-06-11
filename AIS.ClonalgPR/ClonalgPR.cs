@@ -23,7 +23,7 @@ namespace AIS.ClonalgPR
         {
             get
             {
-                var sequence = _antigens.Select(antigen => antigen.Sequence).ToList().ToString().ToArray();
+                var sequence = _antigens.Select(antigen => antigen.Sequence).FirstOrDefault().ToArray();
                 return sequence.Contains('U') ? TypeBioSequence.RNA : 
                     sequence.Where(antigen => !Constants.Gaps.Contains(antigen)).Distinct().Count() == 4 ? 
                     TypeBioSequence.DNA : TypeBioSequence.PROTEIN; ;
@@ -163,7 +163,7 @@ namespace AIS.ClonalgPR
             var i = 1;
             while (i <= maximumIterations)
             {
-                foreach (var antigen in antigens)
+                foreach (var antigen in _antigens)
                 {
                     Affinity(antigen, antibodies);
                     var selectedPopulation = Select(antibodies, numberHighAffinity);
