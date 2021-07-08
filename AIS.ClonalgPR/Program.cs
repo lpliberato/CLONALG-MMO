@@ -16,11 +16,11 @@ namespace AIS.ClonalgPR
             var antigens = GetAntigens();
             var markov = new HiddenMarkovModel(antigens.Select(s => s.Sequence).ToList());
             markov.Train();
-            Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
-            Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
+            //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
+            //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
 
-            //var clonalgPR = new ClonalgPR(distance: markov);
-            //clonalgPR.Execute(antigens: antigens, maximumIterations: 1, percentHighAffinity: 60, percentLowAffinity: 40);
+            var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens);
+            clonalgPR.Execute(maximumIterations: 1, percentHighAffinity: 60, percentLowAffinity: 40);
 
             //SaveResult(clonalgPR.Results);
         }

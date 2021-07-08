@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace AIS.ClonalgPR
 {
@@ -13,27 +14,55 @@ namespace AIS.ClonalgPR
         private Result _results = new Result();
         private IDistance _distance = null;
         private List<Antigen> _antigens = new List<Antigen>();
-        private TypeBioSequence _typeBioSequence = TypeBioSequence.PROTEIN;
         private Stopwatch _watch = new Stopwatch();
         public Result Results
         {
             get { return _results; }
         }
-        public TypeBioSequence TypeBioSequence
+
+        private TypeBioSequence TypeBioSequence
         {
             get
             {
-                var sequence = _antigens.Select(antigen => antigen.Sequence).FirstOrDefault().ToArray();
-                return sequence.Contains('U') ? TypeBioSequence.RNA : 
-                    sequence.Where(antigen => !Constants.Gaps.Contains(antigen)).Distinct().Count() == 4 ? 
-                    TypeBioSequence.DNA : TypeBioSequence.PROTEIN; ;
-            }
+                return IsDNA() ? 
+                    TypeBioSequence.DNA :
+                     IsRNA() ?
+                    TypeBioSequence.RNA :
+                    IsProtein() ?
+                    TypeBioSequence.PROTEIN :
+                    TypeBioSequence.UNKNOWN;
+             }
         }
 
         public ClonalgPR(IDistance distance, List<Antigen> antigens)
         {
             _distance = distance;
             _antigens = antigens;
+        }
+
+
+        private bool IsDNA() 
+        {
+            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
+            var regex = new Regex(@"^[AaCcTtGg\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return sequence.Count() == matches.Count();
+        }
+
+        private bool IsRNA()
+        {
+            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
+            var regex = new Regex(@"^[AaCcUuGg\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return sequence.Count() == matches.Count();
+        }
+
+        private bool IsProtein() 
+        {
+            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
+            var regex = new Regex(@"^[AaCcDdEeFfGgHhIiKkLlMmNnPpQqRrSsTtVvWwYy\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return true;
         }
 
         private void Affinity(Antigen antigen, List<Antibody> antibodies)

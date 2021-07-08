@@ -2,8 +2,9 @@
 {
     public enum TypeBioSequence
     {
-        DNA = 1,
-        RNA = 2,
-        PROTEIN = 3
+        DNA,
+        RNA,
+        PROTEIN,
+        UNKNOWN
     }
 }
