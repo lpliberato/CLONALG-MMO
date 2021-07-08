@@ -14,8 +14,11 @@ namespace AIS.ClonalgPR
         static void Main()
         {
             var antigens = GetAntigens();
-            var markov = new HiddenMarkovModel(antigens.Select(s => s.Sequence).ToList());
+            var sequences = GetSequencesByAntigens(antigens);
+            var markov = new HiddenMarkovModel(sequences);
+
             markov.Train();
+
             //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
             //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
 
