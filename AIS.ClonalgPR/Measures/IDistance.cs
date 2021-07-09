@@ -10,5 +10,6 @@ namespace AIS.ClonalgPR.Measures
         double CalculateCloneRate(double affinity, int length);
         double CalculateMutationRate(double affinity, int length);
         bool IsBetterAffinity(double affinityAB, double affinityM);
+        int SequenceSize();
     }
 }

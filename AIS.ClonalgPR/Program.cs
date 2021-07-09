@@ -11,21 +11,60 @@ namespace AIS.ClonalgPR
 {
     class Program
     {
+        private static List<Antigen> antigens = new List<Antigen>();
+        private static TypeBioSequence TypeBioSequence
+        {
+            get
+            {
+                return IsDNA() ?
+                    TypeBioSequence.DNA :
+                     IsRNA() ?
+                    TypeBioSequence.RNA :
+                    IsProtein() ?
+                    TypeBioSequence.PROTEIN :
+                    TypeBioSequence.UNKNOWN;
+            }
+        }
+
         static void Main()
         {
-            var antigens = GetAntigens();
+            antigens = GetAntigens();
             var sequences = GetSequencesByAntigens(antigens);
-            var markov = new HiddenMarkovModel(sequences);
+            var markov = new HiddenMarkovModel(sequences, TypeBioSequence);
 
             markov.Train();
 
             //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
             //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
 
-            var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens);
+            var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens, typeBioSequence: TypeBioSequence);
             clonalgPR.Execute(maximumIterations: 1, percentHighAffinity: 60, percentLowAffinity: 40);
 
             //SaveResult(clonalgPR.Results);
+        }
+
+        private static bool IsDNA()
+        {
+            var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
+            var regex = new Regex(@"^[AaCcTtGg\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return matches.Count() > 0;
+        }
+
+        private static bool IsRNA()
+        {
+            var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
+            var regex = new Regex(@"^[AaCcUuGg\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return matches.Count() > 0;
+        }
+
+        private static bool IsProtein()
+        {
+            var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
+            var regex = new Regex(@"^[AaCcDdEeFfGgHhIiKkLlMmNnPpQqRrSsTtVvWwYy\W]+$", RegexOptions.Multiline);
+            var matches = regex.Matches(sequence);
+            return matches.Count() > 0;
         }
 
         private static List<string> GetSequencesByAntigens(List<Antigen> antigens)

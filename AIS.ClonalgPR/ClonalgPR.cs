@@ -15,54 +15,18 @@ namespace AIS.ClonalgPR
         private IDistance _distance = null;
         private List<Antigen> _antigens = new List<Antigen>();
         private Stopwatch _watch = new Stopwatch();
+        private TypeBioSequence _typeBioSequence;
+
         public Result Results
         {
             get { return _results; }
         }
 
-        private TypeBioSequence TypeBioSequence
-        {
-            get
-            {
-                return IsDNA() ? 
-                    TypeBioSequence.DNA :
-                     IsRNA() ?
-                    TypeBioSequence.RNA :
-                    IsProtein() ?
-                    TypeBioSequence.PROTEIN :
-                    TypeBioSequence.UNKNOWN;
-             }
-        }
-
-        public ClonalgPR(IDistance distance, List<Antigen> antigens)
+        public ClonalgPR(IDistance distance, List<Antigen> antigens, TypeBioSequence typeBioSequence)
         {
             _distance = distance;
             _antigens = antigens;
-        }
-
-
-        private bool IsDNA() 
-        {
-            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
-            var regex = new Regex(@"^[AaCcTtGg\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
-            return sequence.Count() == matches.Count();
-        }
-
-        private bool IsRNA()
-        {
-            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
-            var regex = new Regex(@"^[AaCcUuGg\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
-            return sequence.Count() == matches.Count();
-        }
-
-        private bool IsProtein() 
-        {
-            var sequence = _antigens.Select(antigen => antigen.Sequence).ToString();
-            var regex = new Regex(@"^[AaCcDdEeFfGgHhIiKkLlMmNnPpQqRrSsTtVvWwYy\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
-            return true;
+            _typeBioSequence = typeBioSequence;
         }
 
         private void Affinity(Antigen antigen, List<Antibody> antibodies)
@@ -97,13 +61,13 @@ namespace AIS.ClonalgPR
                 antibodyAmount = Constants.Random.Next(Constants.minimalAmountOfAntibodies, Constants.maximumAmountOfAntibodies);
 
             if (sequenceSize == 0)
-                sequenceSize = Constants.Random.Next(Constants.minimumAntibodySize, Constants.maximumAntibodySize);
+                sequenceSize = _distance.SequenceSize();
 
             for (int i = 0; i < antibodyAmount; i++)
             {
                 var sequence = "";
                 for (int j = 0; j < sequenceSize; j++)
-                    sequence += Constants.Aminoacids[Constants.Random.Next(0, Constants.Aminoacids.Length)];
+                    sequence += GenerateSequences();
 
                 antibodies.Add(new Antibody
                 {
@@ -113,6 +77,21 @@ namespace AIS.ClonalgPR
             }
 
             return antibodies;
+        }
+
+        private string GenerateSequences()
+        {
+            switch (_typeBioSequence)
+            {
+                case TypeBioSequence.DNA:
+                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)].ToString();
+                case TypeBioSequence.RNA:
+                    return Constants.RNA[Constants.Random.Next(0, Constants.RNA.Length)].ToString();
+                case TypeBioSequence.PROTEIN:
+                    return Constants.Aminoacids[Constants.Random.Next(0, Constants.Aminoacids.Length)].ToString();
+                default:
+                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)].ToString();
+            }
         }
 
         private void Insert(Antigen antigen, List<Antibody> antibodies)
@@ -184,8 +163,7 @@ namespace AIS.ClonalgPR
         public void Execute(int maximumIterations, int percentHighAffinity, int percentLowAffinity)
         {
             StartTimer();
-            var sequenceSize = Constants.Random.Next(10, 20);
-            var antibodies = Initialize(sequenceSize: sequenceSize);
+            var antibodies = Initialize();
             var numberHighAffinity = (int)((double)percentHighAffinity / 100 * antibodies.Count());
             var numberLowAffinity = (int)((double)percentLowAffinity / 100 * antibodies.Count());
 

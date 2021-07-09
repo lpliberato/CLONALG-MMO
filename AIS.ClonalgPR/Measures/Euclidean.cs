@@ -184,5 +184,9 @@ namespace AIS.ClonalgPR.Measures
             return population.OrderBy(o => o.Affinity).Take(numberHighAffinity).ToList();
         }
 
+        public int SequenceSize()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

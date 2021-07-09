@@ -38,5 +38,10 @@ namespace AIS.ClonalgPR.Measures
         {
             return population.OrderByDescending(o => o.Affinity).Take(numberHighAffinity).ToList();
         }
+
+        public int SequenceSize()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

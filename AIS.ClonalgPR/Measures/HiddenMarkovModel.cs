@@ -9,11 +9,13 @@ namespace AIS.ClonalgPR.Measures
     {
         private List<string> Observations { get; set; }
         private List<State> States { get; set; }
+        private TypeBioSequence TypeBioSequence;
 
-        public HiddenMarkovModel(List<string> observations)
+        public HiddenMarkovModel(List<string> observations, TypeBioSequence typeBioSequence)
         {
             Observations = observations;
             States = new List<State>();
+            TypeBioSequence = typeBioSequence;
         }
 
         public void Train()
@@ -403,6 +405,11 @@ namespace AIS.ClonalgPR.Measures
         public List<Antibody> Order(List<Antibody> population, int numberHighAffinity)
         {
             return population.OrderByDescending(o => o.Affinity).Take(numberHighAffinity).ToList();
+        }
+
+        public int SequenceSize()
+        {
+            return States.Count();
         }
     }
 }
