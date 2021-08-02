@@ -5,8 +5,8 @@ namespace AIS.ClonalgPR.Measures
 {
     public interface IDistance
     {
-        double Calculate(char[] sequenceA, char[] sequenceB);
-        List<Antibody> Order(List<Antibody> population, int numberHighAffinity);
+        double Calculate(char[] sequenceA = null, char[] sequenceB = null);
+        IEnumerable<Antibody> Order(List<Antibody> population);
         double CalculateCloneRate(double affinity, int length);
         double CalculateMutationRate(double affinity, int length);
         bool IsBetterAffinity(double affinityAB, double affinityM);

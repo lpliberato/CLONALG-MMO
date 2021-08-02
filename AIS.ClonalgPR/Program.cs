@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace AIS.ClonalgPR
 {
@@ -29,18 +30,47 @@ namespace AIS.ClonalgPR
         static void Main()
         {
             antigens = GetAntigens();
+            if (antigens != null && antigens.Count > 0)
+                ExecuteSingle(antigens);
+            else 
+            {
+                var text = GetTextFile();
+                var antigensMultiple = GetAntigensByFastaFileAligned(text);
+
+                ExecuteMultiple(antigensMultiple);
+            }
+        }
+
+        static void ExecuteSingle(List<Antigen> antigens) 
+        {
             var sequences = GetSequencesByAntigens(antigens);
             var markov = new HiddenMarkovModel(sequences, TypeBioSequence);
 
             markov.Train();
 
-            //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
-            //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'A', 'C', 'A', 'C', 'A', 'T', 'C' }));
+            //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'C','A','G','C','C','C','A' }));
+            //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'G', 'C', 'G', 'G', 'G', 'A', 'C' }));
 
             var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens, typeBioSequence: TypeBioSequence);
-            clonalgPR.Execute(maximumIterations: 1, percentHighAffinity: 60, percentLowAffinity: 40);
+            clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
 
-            //SaveResult(clonalgPR.Results);
+            //SaveResult(clonalgPR.Results);        
+        }
+        static void ExecuteMultiple(List<List<Antigen>> antigens)
+        {
+            var typeBioSequence = TypeBioSequence.PROTEIN;
+
+            for (int i = 0; i < antigens.Count; i++)
+            {
+                var _antigens = antigens[i];
+                var sequences = GetSequencesByAntigens(_antigens);
+                var markov = new HiddenMarkovModel(sequences, typeBioSequence);
+
+                markov.Train();
+
+                var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
+                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
+            }
         }
 
         private static bool IsDNA()
@@ -90,16 +120,21 @@ namespace AIS.ClonalgPR
 
         private static string GetSequenceAntigen(string[] characteristics)
         {
-            var length = characteristics.Length - 4;
+            var length = characteristics.Length - 3;
             var targetArray = new string[length];
-            Array.Copy(characteristics, 4, targetArray, 0, length);
+            Array.Copy(characteristics, 3, targetArray, 0, length);
             return string.Join("", targetArray);
+        }
+
+        private static string GetTextFile() 
+        {
+            var path = Helpers.GetPathFile();
+            return File.ReadAllText(path);
         }
 
         private static List<Antigen> GetAntigens()
         {
-            var path = Helpers.GetPathFile();
-            var text = File.ReadAllText(path);
+            var text = GetTextFile();
 
             if (IsMsfFile(text))
                 return GetAntigensByMsfFile(text);
@@ -108,6 +143,53 @@ namespace AIS.ClonalgPR
                 return GetAntigensByFastaFile(text);
 
             return new List<Antigen>();
+        }
+
+        private static List<List<Antigen>> GetAntigensByFastaFileAligned(string text) 
+        {
+            var antigensMultiple = new List<List<Antigen>>();
+            var antigens = new List<Antigen>();
+            var sequences = text.Split("tr", StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var item in sequences)
+            {
+                var antigenName = item.Split("|", StringSplitOptions.RemoveEmptyEntries);
+                var antigenHost = antigenName[1].Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                var partOfAligment = antigenHost[1].Trim();
+
+                if (!antigens.Any(antigen => antigen.Name == antigenName[0]))
+                {
+                    antigens.Add(
+                        new Antigen()
+                        {
+                            Name = antigenName[0],
+                            Host = antigenHost[0],
+                            Sequence = partOfAligment,
+                            Length = partOfAligment.Length
+                        });
+                }
+                else 
+                {
+                    antigensMultiple.Add(antigens);
+                    antigens = new List<Antigen>();
+                    antigens.Add(
+                        new Antigen()
+                        {
+                            Name = antigenName[0],
+                            Host = antigenHost[0],
+                            Sequence = partOfAligment,
+                            Length = partOfAligment.Length
+                        });
+                }
+            }
+            antigensMultiple.Add(antigens);
+
+            return antigensMultiple;
+        }
+
+        private static bool IsFastaFileAligned() 
+        {
+            return true;
         }
 
         private static bool IsFastaFile(string text)
@@ -133,7 +215,7 @@ namespace AIS.ClonalgPR
             foreach (var item in matches)
             {
                 var sequenceName = item.ToString();
-                var expression = @"(?<=" + sequenceName + @")\s{2,}[a-zA-Z\.].+(?!\n)";
+                var expression = @"(?<=" + sequenceName + @")\s{2,}[a-zA-Z].+$";
                 regex = new Regex(expression, RegexOptions.Multiline);
                 var partsOfSequence = regex.Matches(text);
                 var sequence = string.Join("", partsOfSequence).Replace(" ", "");

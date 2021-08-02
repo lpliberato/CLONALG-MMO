@@ -29,13 +29,14 @@ namespace AIS.ClonalgPR
             _typeBioSequence = typeBioSequence;
         }
 
+
         private void Affinity(Antigen antigen, List<Antibody> antibodies)
         {
             for (int i = 0; i < antibodies.Count(); i++)
             {
-                var sequenceA = antigen.Sequence.ToCharArray();
+                // var sequenceA = antigen.Sequence.ToCharArray();
                 var sequenceB = antibodies[i].Sequence.ToCharArray();
-                antibodies[i].Affinity = _distance.Calculate(sequenceA, sequenceB);
+                antibodies[i].Affinity = _distance.Calculate(sequenceB: sequenceB);
             }
         }
 
@@ -45,7 +46,7 @@ namespace AIS.ClonalgPR
             foreach (var antibody in antibodies)
             {
                 var rate = _distance.CalculateCloneRate(antibody.Affinity, antibody.Length);
-                var clonesAmount = (int)(rate * antibody.Length);
+                var clonesAmount = Math.Round(rate * antibody.Length);
                 for (int j = 0; j < clonesAmount; j++)
                     clones.Add(antibody.Clone());
             }
@@ -69,6 +70,7 @@ namespace AIS.ClonalgPR
                 for (int j = 0; j < sequenceSize; j++)
                     sequence += GenerateSequences();
 
+                //sequence = "ACACATC";
                 antibodies.Add(new Antibody
                 {
                     Sequence = sequence,
@@ -79,28 +81,29 @@ namespace AIS.ClonalgPR
             return antibodies;
         }
 
-        private string GenerateSequences()
+        private char GenerateSequences()
         {
             switch (_typeBioSequence)
             {
                 case TypeBioSequence.DNA:
-                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)].ToString();
+                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)];
                 case TypeBioSequence.RNA:
-                    return Constants.RNA[Constants.Random.Next(0, Constants.RNA.Length)].ToString();
+                    return Constants.RNA[Constants.Random.Next(0, Constants.RNA.Length)];
                 case TypeBioSequence.PROTEIN:
-                    return Constants.Aminoacids[Constants.Random.Next(0, Constants.Aminoacids.Length)].ToString();
+                    return Constants.Aminoacids[Constants.Random.Next(0, Constants.Aminoacids.Length)];
                 default:
-                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)].ToString();
+                    return Constants.DNA[Constants.Random.Next(0, Constants.DNA.Length)];
             }
         }
 
-        private void Insert(Antigen antigen, List<Antibody> antibodies)
+        private void Insert(Antigen antigen, List<Antibody> antibodies, int index)
         {
             if (antibodies == null || antibodies.Count() == 0) return;
 
-            var antibody = _distance.Order(antibodies, 1).FirstOrDefault();
             var antigenName = antigen.Name;
-            var memoryCell = _memoryCells.Where(w => w.Antigen == antigenName).FirstOrDefault();
+            var memoryCell = _memoryCells.Where((a,i) => i == index).FirstOrDefault();
+            var maxAffinity = antibodies.Max(_antibody => _antibody.Affinity);
+            var antibody = antibodies.Where(_antibody => _antibody.Affinity == maxAffinity).FirstOrDefault();
 
             if (memoryCell != null && _distance.IsBetterAffinity(antibody.Affinity, memoryCell.Affinity))
             {
@@ -127,9 +130,8 @@ namespace AIS.ClonalgPR
 
                 for (int j = 0; j < mutateAmount; j++)
                 {
-                    var n = sequence[sequenceIndex];
-                    var aminoacid = Constants.Aminoacids.Where(w => w != n).FirstOrDefault();
-                    sequence[sequenceIndex] = aminoacid;
+                    var nucleotideOrAminoacid = GenerateSequences();
+                    sequence[sequenceIndex] = nucleotideOrAminoacid;
                     antibody.Sequence = new string(sequence);
                     sequenceIndex = Constants.Random.Next(0, antibody.Length);
                 }
@@ -142,8 +144,8 @@ namespace AIS.ClonalgPR
         {
             if (antibodies == null || antibodies.Count() == 0) return antibodies;
 
-            var sequenceSize = antibodies[0].Length;
-            var antibodiesReplaced = antibodies.Take(inferiorLimit).ToList();
+            var sequenceSize = _distance.SequenceSize();
+            var antibodiesReplaced = antibodies.OrderBy(o => o.Affinity).Take(inferiorLimit).ToList();
             antibodiesReplaced.ForEach(antibody => antibodies.Remove(antibody));
 
             var amountOfAntibodiesReplaced = antibodiesReplaced.Count();
@@ -157,38 +159,49 @@ namespace AIS.ClonalgPR
 
         private List<Antibody> Select(List<Antibody> population, int numberHighAffinity)
         {
-            return _distance.Order(population, numberHighAffinity);
+            return _distance.Order(population).Take(numberHighAffinity).ToList();
         }
 
-        public void Execute(int maximumIterations, int percentHighAffinity, int percentLowAffinity)
+        public void Execute(int maximumIterations, double percentHighAffinity, double percentLowAffinity)
         {
             StartTimer();
-            var antibodies = Initialize();
-            var numberHighAffinity = (int)((double)percentHighAffinity / 100 * antibodies.Count());
-            var numberLowAffinity = (int)((double)percentLowAffinity / 100 * antibodies.Count());
 
             var i = 1;
-            while (i <= maximumIterations)
+            while (i < maximumIterations)
             {
-                foreach (var antigen in _antigens)
+                var antibodies = Initialize(antibodyAmount: 100);
+                var numberHighAffinity = (int)Math.Round(percentHighAffinity * antibodies.Count());
+                var numberLowAffinity = (int)Math.Round(percentLowAffinity * antibodies.Count());
+
+                for (int j = 0; j < _antigens.Count(); j++)
                 {
+                    var antigen = _antigens[j];
                     Affinity(antigen, antibodies);
                     var selectedPopulation = Select(antibodies, numberHighAffinity);
                     var clonedPopulation = Clone(selectedPopulation);
                     var mutatedPopulation = Mutation(clonedPopulation);
                     Affinity(antigen, mutatedPopulation);
                     selectedPopulation = Select(mutatedPopulation, numberHighAffinity);
-                    Insert(antigen, selectedPopulation);
+                    Insert(antigen, selectedPopulation, j);
                     antibodies = Replace(selectedPopulation, numberLowAffinity);
                 }
                 i++;
             }
             StopTimer();
             SetStatistics(maximumIterations, percentHighAffinity, percentLowAffinity);
+            PrintAntibodies();
         }
 
-        private void SetStatistics(int maximumIterations, int percentHighAffinity, int percentLowAffinity)
+        private void PrintAntibodies()
         {
+            Console.WriteLine("");
+            _memoryCells.ForEach(antibody => Console.WriteLine(antibody.Sequence));
+        }
+
+        private void SetStatistics(int maximumIterations, double percentHighAffinity, double percentLowAffinity)
+        {
+            if (_memoryCells == null || _memoryCells.Count() == 0) return;
+
             var average = Average();
             var variance = Variance();
             var standardDeviation = StandardDeviation(variance);
@@ -206,7 +219,7 @@ namespace AIS.ClonalgPR
         private double Variance()
         {
             var variances = new List<double>();
-            var affinities = _memoryCells.Where(w => !double.IsNaN(w.Affinity) && !double.IsInfinity(w.Affinity)).Select(s => s.Affinity).ToList();
+            var affinities = _memoryCells.Select(s => s.Affinity).ToList();
             var average = Average();
             var count = affinities.Count();
             affinities.ForEach(affinity => variances.Add(Math.Pow(affinity - average, 2)));
@@ -220,7 +233,7 @@ namespace AIS.ClonalgPR
 
         private double GreaterAffinity()
         {
-            return _memoryCells.Where(w => !double.IsNaN(w.Affinity) && !double.IsInfinity(w.Affinity)).Select(s => s.Affinity).Max();
+            return _memoryCells.Select(s => s.Affinity).Max();
         }
 
         private void StartTimer()
@@ -238,7 +251,7 @@ namespace AIS.ClonalgPR
             return _watch.Elapsed.TotalSeconds;
         }
 
-        private void PrintResults(int maximumIterations, double average, double variance, double standardDeviation, double greaterAffinity, double seconds, int percentHighAffinity, int percentLowAffinity)
+        private void PrintResults(int maximumIterations, double average, double variance, double standardDeviation, double greaterAffinity, double seconds, double percentHighAffinity, double percentLowAffinity)
         {
             Console.WriteLine(string.Format("Iteração {0}", maximumIterations));
             Console.WriteLine(string.Format("Média: {0}", average));
@@ -251,7 +264,7 @@ namespace AIS.ClonalgPR
             Console.WriteLine("");
         }
 
-        private void SetResult(double average, double variance, double standardDeviation, int maximumIterations, int percentHighAffinity, int percentLowAffinity, double greaterAffinity, double seconds)
+        private void SetResult(double average, double variance, double standardDeviation, int maximumIterations, double percentHighAffinity, double percentLowAffinity, double greaterAffinity, double seconds)
         {
             _results.Average.Add(average);
             _results.Variance.Add(variance);

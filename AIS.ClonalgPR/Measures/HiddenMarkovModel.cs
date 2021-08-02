@@ -26,8 +26,8 @@ namespace AIS.ClonalgPR.Measures
         }
 
         private int GetObservationsAmount()
-        { 
-          return Observations.Count;
+        {
+            return Observations.Count;
         }
 
         private int GetObservationSize()
@@ -47,8 +47,11 @@ namespace AIS.ClonalgPR.Measures
 
         private void AddInsertState(int index)
         {
+            var currentIndex = index + 1;
+            if (IsLastIndexObservation(currentIndex)) return;
+
             var observationsAmount = GetObservationsAmount();
-            var symbolsAmount = GetAmountOfMatches(index + 1);
+            var symbolsAmount = GetAmountOfMatches(currentIndex);
 
             if (symbolsAmount == observationsAmount)
                 States.Add(new State()
@@ -59,10 +62,20 @@ namespace AIS.ClonalgPR.Measures
                 });
         }
 
+        private void AddDeleteState() 
+        {
+            States.Add(new State()
+            {
+                Name = StateEnum.Delete,
+                EmissionProbabilities = InitEmissionProbabilities(),
+                TransitionProbabilities = InitTransitionProbabilities()
+            });
+        }
+
         private bool IsLastIndexObservation(int index)
         {
-            var observationSize = Observations[0].Length;
-            return index == observationSize;
+            var observationSize = Observations[0].Trim().Length;
+            return index >= observationSize;
         }
 
         private void CreateStates(int index = 0)
@@ -74,8 +87,10 @@ namespace AIS.ClonalgPR.Measures
 
             if (symbolsAmount == observationsAmount)
                 AddMatchState();
-            else
+            else if (symbolsAmount > 0)
                 AddInsertState(index);
+            else
+                AddDeleteState();
             CreateStates(index + 1);
         }
 
@@ -86,8 +101,11 @@ namespace AIS.ClonalgPR.Measures
 
             if (symbolsAmount != observationsAmount)
             {
+                var currentIdex = index + 1;
+                if (IsLastIndexObservation(currentIdex)) return;
+
                 insertStateCounter++;
-                var nextSymbolsAmount = GetAmountOfMatches(index + 1);
+                var nextSymbolsAmount = GetAmountOfMatches(currentIdex);
                 if (nextSymbolsAmount == observationsAmount)
                     insertStateCounter--;
             }
@@ -149,11 +167,12 @@ namespace AIS.ClonalgPR.Measures
 
         private void CreateProbabilities(int index = 0, int insertStateCounter = 0)
         {
-            if (IsLastIndexObservation(index)) return;
+            var currentIndex = index - insertStateCounter;
+            if (IsLastIndexObservation(index) || IsLastIndexStates(currentIndex)) return;
 
             var symbols = InitSymbols();
             var probabilities = InitEmissionProbabilities();
-            State currentState = GetCurrentState(index - insertStateCounter);
+            State currentState = GetCurrentState(currentIndex);
 
             UpdateAllProbabilityAndAmountOfSymbols(index, ref symbols, ref probabilities);
             UpdateEmissionProbabilities(currentState.EmissionProbabilities, probabilities);
@@ -169,24 +188,112 @@ namespace AIS.ClonalgPR.Measures
 
         private Dictionary<char, int> InitSymbols()
         {
-            return new Dictionary<char, int>()
-                {
-                    { 'A', 0 },
-                    { 'C', 0 },
-                    { 'G', 0 },
-                    { 'T', 0 },
-                };
+            switch (TypeBioSequence)
+            {
+                case TypeBioSequence.DNA:
+                    return new Dictionary<char, int>()
+                    {
+                        { 'A', 0 },
+                        { 'C', 0 },
+                        { 'G', 0 },
+                        { 'T', 0 }
+                    };
+                case TypeBioSequence.RNA:
+                    return new Dictionary<char, int>()
+                    {
+                        { 'A', 0 },
+                        { 'C', 0 },
+                        { 'G', 0 },
+                        { 'U', 0 }
+                    };
+                case TypeBioSequence.PROTEIN:
+                    return new Dictionary<char, int>()
+                    {
+                        { 'A', 0 }, 
+                        { 'C', 0 }, 
+                        { 'D', 0 }, 
+                        { 'E', 0 }, 
+                        { 'F', 0 }, 
+                        { 'G', 0 }, 
+                        { 'H', 0 }, 
+                        { 'I', 0 }, 
+                        { 'K', 0 }, 
+                        { 'L', 0 }, 
+                        { 'M', 0 }, 
+                        { 'N', 0 }, 
+                        { 'P', 0 }, 
+                        { 'Q', 0 }, 
+                        { 'R', 0 }, 
+                        { 'S', 0 }, 
+                        { 'T', 0 }, 
+                        { 'V', 0 }, 
+                        { 'W', 0 },
+                        { 'Y', 0 }
+                    };
+                default:
+                    return new Dictionary<char, int>()
+                    {
+                        { 'A', 0 },
+                        { 'C', 0 },
+                        { 'G', 0 },
+                        { 'T', 0 }
+                    };
+            }
         }
 
         private Dictionary<char, double> InitEmissionProbabilities()
         {
-            return new Dictionary<char, double>()
-                {
-                    { 'A', 0d },
-                    { 'C', 0d },
-                    { 'G', 0d },
-                    { 'T', 0d },
-                };
+            switch (TypeBioSequence)
+            {
+                case TypeBioSequence.DNA:
+                    return new Dictionary<char, double>()
+                    {
+                        { 'A', 0d },
+                        { 'C', 0d },
+                        { 'G', 0d },
+                        { 'T', 0d }
+                    };
+                case TypeBioSequence.RNA:
+                    return new Dictionary<char, double>()
+                    {
+                        { 'A', 0d },
+                        { 'C', 0d },
+                        { 'G', 0d },
+                        { 'U', 0d }
+                    };
+                case TypeBioSequence.PROTEIN:
+                    return new Dictionary<char, double>()
+                    {
+                        { 'A', 0d },
+                        { 'C', 0d },
+                        { 'D', 0d },
+                        { 'E', 0d },
+                        { 'F', 0d },
+                        { 'G', 0d },
+                        { 'H', 0d },
+                        { 'I', 0d },
+                        { 'K', 0d },
+                        { 'L', 0d },
+                        { 'M', 0d },
+                        { 'N', 0d },
+                        { 'P', 0d },
+                        { 'Q', 0d },
+                        { 'R', 0d },
+                        { 'S', 0d },
+                        { 'T', 0d },
+                        { 'V', 0d },
+                        { 'W', 0d },
+                        { 'Y', 0d }
+                    };
+                default:
+                    return new Dictionary<char, double>()
+                    {
+                        { 'A', 0d },
+                        { 'C', 0d },
+                        { 'G', 0d },
+                        { 'T', 0d }
+                    };
+            }
         }
 
         private Dictionary<StateEnum, double> InitTransitionProbabilities()
@@ -262,7 +369,7 @@ namespace AIS.ClonalgPR.Measures
             {
                 for (int j = 0; j < observationsAmount; j++)
                 {
-                    var symbol = GetSymbol(j,i);
+                    var symbol = GetSymbol(j, i);
 
                     if (!IsGap(symbol))
                     {
@@ -285,7 +392,7 @@ namespace AIS.ClonalgPR.Measures
         }
 
         private double GetPercentageOfMachState(int symbolsAmount)
-        { 
+        {
             return Convert.ToDouble(symbolsAmount) / Convert.ToDouble(Observations.Count);
         }
 
@@ -363,6 +470,9 @@ namespace AIS.ClonalgPR.Measures
             {
                 var symbol = observation[i];
                 var currentState = GetCurrentState(i);
+
+                if (currentState.Name == StateEnum.Delete) continue;
+
                 var emissionProbability = 0d;
                 var transitionProbabilities = 0d;
 
@@ -372,24 +482,23 @@ namespace AIS.ClonalgPR.Measures
                 if (currentState.EmissionProbabilities != null)
                     emissionProbability = currentState.EmissionProbabilities[symbol];
 
-                if (emissionProbability > 0)
-                    prob *= emissionProbability;
+                prob *= emissionProbability;
+                prob *= transitionProbabilities;
 
-                if (transitionProbabilities > 0)
-                    prob *= transitionProbabilities;
+                if (prob == 0) break;
             }
 
             return prob;
         }
 
-        public double Calculate(char[] sequenceA, char[] sequenceB)
+        public double Calculate(char[] sequenceA = null, char[] sequenceB = null)
         {
             return ForwardViterbi(sequenceB);
         }
 
         public double CalculateCloneRate(double affinity, int length)
         {
-            return affinity;
+            return affinity * length;
         }
 
         public double CalculateMutationRate(double affinity, int length)
@@ -402,9 +511,9 @@ namespace AIS.ClonalgPR.Measures
             return affinityAB > affinityM;
         }
 
-        public List<Antibody> Order(List<Antibody> population, int numberHighAffinity)
+        public IEnumerable<Antibody> Order(List<Antibody> population)
         {
-            return population.OrderByDescending(o => o.Affinity).Take(numberHighAffinity).ToList();
+            return population.OrderByDescending(o => o.Affinity);
         }
 
         public int SequenceSize()

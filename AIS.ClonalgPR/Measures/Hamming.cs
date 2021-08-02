@@ -19,6 +19,11 @@ namespace AIS.ClonalgPR.Measures
             return (double)matches / sequenceA.Length;
         }
 
+        public double Calculate(char[] sequence)
+        {
+            throw new System.NotImplementedException();
+        }
+
         public double CalculateCloneRate(double affinity, int length)
         {
             return affinity;
@@ -34,9 +39,9 @@ namespace AIS.ClonalgPR.Measures
             return affinityAB > affinityM;
         }
 
-        public List<Antibody> Order(List<Antibody> population, int numberHighAffinity)
+        public IEnumerable<Antibody> Order(List<Antibody> population)
         {
-            return population.OrderByDescending(o => o.Affinity).Take(numberHighAffinity).ToList();
+            return population.OrderByDescending(o => o.Affinity);
         }
 
         public int SequenceSize()

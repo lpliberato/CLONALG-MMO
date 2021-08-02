@@ -179,9 +179,9 @@ namespace AIS.ClonalgPR.Measures
             return affinityAB < affinityM;
         }
 
-        public List<Antibody> Order(List<Antibody> population, int numberHighAffinity)
+        public IEnumerable<Antibody> Order(List<Antibody> population)
         {
-            return population.OrderBy(o => o.Affinity).Take(numberHighAffinity).ToList();
+            return population.OrderBy(o => o.Affinity);
         }
 
         public int SequenceSize()
