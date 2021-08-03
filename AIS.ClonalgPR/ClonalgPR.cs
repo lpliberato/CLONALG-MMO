@@ -194,8 +194,11 @@ namespace AIS.ClonalgPR
 
         private void PrintAntibodies()
         {
-            Console.WriteLine("");
-            _memoryCells.ForEach(antibody => Console.WriteLine(antibody.Sequence));
+            _memoryCells.ForEach(antibody =>
+            {
+                if (!string.IsNullOrEmpty(antibody.Sequence))
+                    Console.WriteLine(antibody.Sequence);
+            });
         }
 
         private void SetStatistics(int maximumIterations, double percentHighAffinity, double percentLowAffinity)

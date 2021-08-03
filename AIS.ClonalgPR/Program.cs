@@ -60,24 +60,37 @@ namespace AIS.ClonalgPR
         {
             var typeBioSequence = TypeBioSequence.PROTEIN;
 
-            for (int i = 0; i < antigens.Count; i++)
-            {
-                var _antigens = antigens[i];
-                var sequences = GetSequencesByAntigens(_antigens);
-                var markov = new HiddenMarkovModel(sequences, typeBioSequence);
+            Parallel.For(0, antigens.Count(),
+                index =>
+                {
+                    var _antigens = antigens[index];
+                    var sequences = GetSequencesByAntigens(_antigens);
+                    var markov = new HiddenMarkovModel(sequences, typeBioSequence);
 
-                markov.Train();
+                    markov.Train();
 
-                var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
-            }
+                    var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
+                    clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
+                });
+
+            //for (int i = 0; i < antigens.Count; i++)
+            //{
+            //    var _antigens = antigens[i];
+            //    var sequences = GetSequencesByAntigens(_antigens);
+            //    var markov = new HiddenMarkovModel(sequences, typeBioSequence);
+
+            //    markov.Train();
+
+            //    var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
+            //    clonalgPR.Execute(maximumIterations: 100, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
+            //}
         }
 
         private static bool IsDNA()
         {
             var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
             var regex = new Regex(@"^[AaCcTtGg\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
+            var matches = regex.Matches(new string(sequence));
             return matches.Count() > 0;
         }
 
@@ -85,7 +98,7 @@ namespace AIS.ClonalgPR
         {
             var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
             var regex = new Regex(@"^[AaCcUuGg\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
+            var matches = regex.Matches(new string(sequence));
             return matches.Count() > 0;
         }
 
@@ -93,11 +106,11 @@ namespace AIS.ClonalgPR
         {
             var sequence = antigens.Select(antigen => antigen.Sequence).FirstOrDefault();
             var regex = new Regex(@"^[AaCcDdEeFfGgHhIiKkLlMmNnPpQqRrSsTtVvWwYy\W]+$", RegexOptions.Multiline);
-            var matches = regex.Matches(sequence);
+            var matches = regex.Matches(new string(sequence));
             return matches.Count() > 0;
         }
 
-        private static List<string> GetSequencesByAntigens(List<Antigen> antigens)
+        private static List<char[]> GetSequencesByAntigens(List<Antigen> antigens)
         {
             return antigens.Select(s => s.Sequence).ToList();
         }
@@ -164,7 +177,7 @@ namespace AIS.ClonalgPR
                         {
                             Name = antigenName[0],
                             Host = antigenHost[0],
-                            Sequence = partOfAligment,
+                            Sequence = partOfAligment.Trim().ToCharArray(),
                             Length = partOfAligment.Length
                         });
                 }
@@ -177,7 +190,7 @@ namespace AIS.ClonalgPR
                         {
                             Name = antigenName[0],
                             Host = antigenHost[0],
-                            Sequence = partOfAligment,
+                            Sequence = partOfAligment.Trim().ToCharArray(),
                             Length = partOfAligment.Length
                         });
                 }
@@ -185,11 +198,6 @@ namespace AIS.ClonalgPR
             antigensMultiple.Add(antigens);
 
             return antigensMultiple;
-        }
-
-        private static bool IsFastaFileAligned() 
-        {
-            return true;
         }
 
         private static bool IsFastaFile(string text)
@@ -222,7 +230,7 @@ namespace AIS.ClonalgPR
                 antigens.Add(new Antigen()
                 {
                     Name = sequenceName,
-                    Sequence = sequence,
+                    Sequence = sequence.Trim().ToCharArray(),
                     Length = sequence.Length
                 });
             }
@@ -244,7 +252,7 @@ namespace AIS.ClonalgPR
                 {
                     Name = GetNameAntigen(characteristics),
                     Host = GetHostAntigen(characteristics),
-                    Sequence = _sequence.ToUpper(),
+                    Sequence = _sequence.Trim().ToUpper().ToCharArray(),
                     Length = _sequence.Length
                 });
             }

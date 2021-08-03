@@ -4,7 +4,7 @@
     {
         public string Name { get; set; }
         public string Host { get; set; }
-        public string Sequence { get; set; }
+        public char[] Sequence { get; set; }
         public int Length { get; set; }
     }
 }

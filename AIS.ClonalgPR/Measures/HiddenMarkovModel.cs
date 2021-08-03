@@ -7,11 +7,11 @@ namespace AIS.ClonalgPR.Measures
 {
     public class HiddenMarkovModel : IDistance
     {
-        private List<string> Observations { get; set; }
+        private List<char[]> Observations { get; set; }
         private List<State> States { get; set; }
         private TypeBioSequence TypeBioSequence;
 
-        public HiddenMarkovModel(List<string> observations, TypeBioSequence typeBioSequence)
+        public HiddenMarkovModel(List<char[]> observations, TypeBioSequence typeBioSequence)
         {
             Observations = observations;
             States = new List<State>();
@@ -45,24 +45,17 @@ namespace AIS.ClonalgPR.Measures
             });
         }
 
-        private void AddInsertState(int index)
+        private void AddInsertState()
         {
-            var currentIndex = index + 1;
-            if (IsLastIndexObservation(currentIndex)) return;
-
-            var observationsAmount = GetObservationsAmount();
-            var symbolsAmount = GetAmountOfMatches(currentIndex);
-
-            if (symbolsAmount == observationsAmount)
-                States.Add(new State()
-                {
-                    Name = StateEnum.Insert,
-                    EmissionProbabilities = InitEmissionProbabilities(),
-                    TransitionProbabilities = InitTransitionProbabilities()
-                });
+            States.Add(new State()
+            {
+                Name = StateEnum.Insert,
+                EmissionProbabilities = InitEmissionProbabilities(),
+                TransitionProbabilities = InitTransitionProbabilities()
+            });
         }
 
-        private void AddDeleteState() 
+        private void AddDeleteState()
         {
             States.Add(new State()
             {
@@ -74,24 +67,26 @@ namespace AIS.ClonalgPR.Measures
 
         private bool IsLastIndexObservation(int index)
         {
-            var observationSize = Observations[0].Trim().Length;
+            var observationSize = Observations[0].Length;
             return index >= observationSize;
         }
 
-        private void CreateStates(int index = 0)
+        private void CreateStates()
         {
-            if (IsLastIndexObservation(index)) return;
+            var observationSize = GetObservationSize();
 
-            var observationsAmount = GetObservationsAmount();
-            var symbolsAmount = GetAmountOfMatches(index);
+            for (int index = 0; index < observationSize; index++)
+            {
+                var nextIndex = index + 1;
+                var observationsAmount = GetObservationsAmount();
+                var symbolsAmount = GetAmountOfMatches(index);
+                var nextSymbolsAmount = GetAmountOfMatches(nextIndex);
 
-            if (symbolsAmount == observationsAmount)
-                AddMatchState();
-            else if (symbolsAmount > 0)
-                AddInsertState(index);
-            else
-                AddDeleteState();
-            CreateStates(index + 1);
+                if (symbolsAmount == observationsAmount)
+                    AddMatchState();
+                else if (symbolsAmount > 0 && (nextSymbolsAmount == observationsAmount || nextSymbolsAmount == 0))
+                    AddInsertState();
+            }
         }
 
         private void UpdateInsertStateCounterForProbabilities(int index, ref int insertStateCounter)
@@ -113,7 +108,7 @@ namespace AIS.ClonalgPR.Measures
 
         private char GetSymbol(int lineIndex, int columnIndex)
         {
-            var sequence = Observations[lineIndex].ToCharArray();
+            char[] sequence = Observations[lineIndex];
             return sequence[columnIndex];
         }
 
@@ -165,19 +160,22 @@ namespace AIS.ClonalgPR.Measures
                 UpdateProbabilityAndAmountOfSymbols(lineIndex, columnIndex, ref symbols, ref probabilities);
         }
 
-        private void CreateProbabilities(int index = 0, int insertStateCounter = 0)
+        private void CreateProbabilities()
         {
-            var currentIndex = index - insertStateCounter;
-            if (IsLastIndexObservation(index) || IsLastIndexStates(currentIndex)) return;
+            var observationSize = GetObservationSize();
+            var insertStateCounter = 0;
 
-            var symbols = InitSymbols();
-            var probabilities = InitEmissionProbabilities();
-            State currentState = GetCurrentState(currentIndex);
+            for (int index = 0; index < observationSize; index++)
+            {
+                var currentIndex = index - insertStateCounter;
+                var symbols = InitSymbols();
+                var probabilities = InitEmissionProbabilities();
+                State currentState = GetCurrentState(currentIndex);
 
-            UpdateAllProbabilityAndAmountOfSymbols(index, ref symbols, ref probabilities);
-            UpdateEmissionProbabilities(currentState.EmissionProbabilities, probabilities);
-            UpdateInsertStateCounterForProbabilities(index, ref insertStateCounter);
-            CreateProbabilities(index + 1, insertStateCounter);
+                UpdateAllProbabilityAndAmountOfSymbols(index, ref symbols, ref probabilities);
+                UpdateEmissionProbabilities(currentState.EmissionProbabilities, probabilities);
+                UpdateInsertStateCounterForProbabilities(index, ref insertStateCounter);
+            }
         }
 
         private void UpdateEmissionProbabilities(Dictionary<char, double> emissionProbabilities, Dictionary<char, double> probabilities)
@@ -209,24 +207,24 @@ namespace AIS.ClonalgPR.Measures
                 case TypeBioSequence.PROTEIN:
                     return new Dictionary<char, int>()
                     {
-                        { 'A', 0 }, 
-                        { 'C', 0 }, 
-                        { 'D', 0 }, 
-                        { 'E', 0 }, 
-                        { 'F', 0 }, 
-                        { 'G', 0 }, 
-                        { 'H', 0 }, 
-                        { 'I', 0 }, 
-                        { 'K', 0 }, 
-                        { 'L', 0 }, 
-                        { 'M', 0 }, 
-                        { 'N', 0 }, 
-                        { 'P', 0 }, 
-                        { 'Q', 0 }, 
-                        { 'R', 0 }, 
-                        { 'S', 0 }, 
-                        { 'T', 0 }, 
-                        { 'V', 0 }, 
+                        { 'A', 0 },
+                        { 'C', 0 },
+                        { 'D', 0 },
+                        { 'E', 0 },
+                        { 'F', 0 },
+                        { 'G', 0 },
+                        { 'H', 0 },
+                        { 'I', 0 },
+                        { 'K', 0 },
+                        { 'L', 0 },
+                        { 'M', 0 },
+                        { 'N', 0 },
+                        { 'P', 0 },
+                        { 'Q', 0 },
+                        { 'R', 0 },
+                        { 'S', 0 },
+                        { 'T', 0 },
+                        { 'V', 0 },
                         { 'W', 0 },
                         { 'Y', 0 }
                     };
@@ -330,21 +328,28 @@ namespace AIS.ClonalgPR.Measures
             return previousIndex >= Observations[0].Length - 2 ? currentIndex : previousIndex;
         }
 
-        private void CreateTransitions(int previousIndex = 0, int insertStateCounter = 0)
+        private void CreateTransitions()
         {
-            var currentIndex = GetCurrentIndex(previousIndex, insertStateCounter);
-            if (IsLastIndexStates(currentIndex)) return;
+            var insertStateCounter = 0;
+            var observationSize = GetObservationSize();
 
-            State currentState = GetCurrentState(currentIndex);
-            CreateTransitionsStates(previousIndex, currentIndex, currentState);
+            for (int previousIndex = 0; previousIndex < observationSize; previousIndex++)
+            {
+                var currentIndex = GetCurrentIndex(previousIndex, insertStateCounter);
+                if (IsLastIndexStates(currentIndex)) return;
 
-            var indexToTransition = GetIndexToTransition(currentIndex, previousIndex);
-            UpdateInsertStateCounterForTransitions(ref insertStateCounter, indexToTransition, Observations.Count);
-            CreateTransitions(previousIndex + 1, insertStateCounter);
+                State currentState = GetCurrentState(currentIndex);
+                CreateTransitionsStates(previousIndex, currentIndex, currentState);
+
+                var indexToTransition = GetIndexToTransition(currentIndex, previousIndex);
+                UpdateInsertStateCounterForTransitions(ref insertStateCounter, indexToTransition, Observations.Count);
+            }
         }
 
         private int GetAmountOfMatches(int index)
         {
+            if (IsLastIndexObservation(index)) return 0;
+
             var count = 0;
             for (int i = 0; i < Observations.Count; i++)
             {
@@ -417,7 +422,7 @@ namespace AIS.ClonalgPR.Measures
                 var percentageOfInsertState = GetPercentageOfMachState(symbolsAmount);
                 percentageOfMachState = GetPercentageOfInsertState(percentageOfInsertState);
             }
-            else if (currentState.Name == StateEnum.Insert && nextState.Name == StateEnum.Match)
+            else if (currentState.Name == StateEnum.Insert && (nextState == null || nextState.Name == StateEnum.Match))
             {
                 symbolsAmount = GetAmountOfInserts(currentIndex);
                 percentageOfMachState = GetPercentageOfMachState(symbolsAmount);
