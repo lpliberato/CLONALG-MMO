@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace AIS.ClonalgPR
 {
@@ -31,7 +32,7 @@ namespace AIS.ClonalgPR
             antigens = GetAntigens();
             if (antigens != null && antigens.Count > 0)
                 ExecuteSingle(antigens);
-            else 
+            else
             {
                 var text = GetTextFile();
                 var antigensMultiple = GetAntigensByFastaFileAligned(text);
@@ -40,7 +41,7 @@ namespace AIS.ClonalgPR
             }
         }
 
-        static void ExecuteSingle(List<Antigen> antigens) 
+        static void ExecuteSingle(List<Antigen> antigens)
         {
             var sequences = GetSequencesByAntigens(antigens);
             var markov = new HiddenMarkovModel(sequences, TypeBioSequence);
@@ -69,7 +70,7 @@ namespace AIS.ClonalgPR
             //        markov.Train();
 
             //        var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-            //        clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.7, percentLowAffinity: 0.3);
+            //        clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, index);
             //    });
 
             for (int i = 0; i < antigens.Count; i++)
@@ -81,8 +82,10 @@ namespace AIS.ClonalgPR
                 markov.Train();
 
                 var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2);
+                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, i);
             }
+
+            ReadAllFiles(antigens.Count());
         }
 
         private static bool IsDNA()
@@ -138,7 +141,7 @@ namespace AIS.ClonalgPR
             return string.Join("", targetArray);
         }
 
-        private static string GetTextFile() 
+        private static string GetTextFile()
         {
             var path = Helpers.GetPathFile();
             return File.ReadAllText(path);
@@ -157,7 +160,7 @@ namespace AIS.ClonalgPR
             return new List<Antigen>();
         }
 
-        private static List<List<Antigen>> GetAntigensByFastaFileAligned(string text) 
+        private static List<List<Antigen>> GetAntigensByFastaFileAligned(string text)
         {
             var antigensMultiple = new List<List<Antigen>>();
             var antigens = new List<Antigen>();
@@ -180,7 +183,7 @@ namespace AIS.ClonalgPR
                             Length = partOfAligment.Length
                         });
                 }
-                else 
+                else
                 {
                     antigensMultiple.Add(antigens);
                     antigens = new List<Antigen>();
@@ -259,14 +262,44 @@ namespace AIS.ClonalgPR
             return antigens;
         }
 
-        private static void SaveResult(Result results)
+        private static void SaveResult(Result results, int index = 0)
         {
-            var filePath = Path.Combine(Helpers.GetPath(), "results.json");
+            var filePath = Path.Combine(Helpers.GetPath(), $"results{index}.json");
             using (StreamWriter file = File.CreateText(filePath))
             {
                 JsonSerializer serializer = new JsonSerializer();
                 serializer.Serialize(file, results);
             }
+        }
+
+        private static void ReadAllFiles(int antigensCount)
+        {
+            var patterns = new List<string>();
+            JsonSerializer serializer = new JsonSerializer();
+            for (int i = 0; i < antigensCount; i++)
+            {
+                try
+                {
+                    var fileName = $"memoryCells{i}.json";
+                    var file = Path.Combine(Helpers.GetPath(), fileName);
+                    StreamReader re = new StreamReader(file);
+                    JsonTextReader reader = new JsonTextReader(re);
+                    var fragments = serializer.Deserialize<List<string>>(reader);
+                    for (int j = 0; j < fragments.Count(); j++)
+                    {
+                        if (patterns.Count() <= j)
+                            patterns.Add(fragments[j]);
+                        else
+                            patterns[j] += fragments[j];
+                    }
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
+
+            patterns.Distinct().ToList().ForEach(pattern => Console.WriteLine(pattern));
         }
     }
 }

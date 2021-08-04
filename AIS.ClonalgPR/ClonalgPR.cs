@@ -1,8 +1,10 @@
 ﻿using AIS.ClonalgPR.Measures;
 using AIS.ClonalgPR.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -11,6 +13,7 @@ namespace AIS.ClonalgPR
     public class ClonalgPR
     {
         private List<Antibody> _memoryCells = new List<Antibody>();
+        private List<string> _memoryCellsStr = new List<string>();
         private Result _results = new Result();
         private IDistance _distance = null;
         private List<Antigen> _antigens = new List<Antigen>();
@@ -101,7 +104,7 @@ namespace AIS.ClonalgPR
             if (antibodies == null || antibodies.Count() == 0) return;
 
             var antigenName = antigen.Name;
-            var memoryCell = _memoryCells.Where((a,i) => i == index).FirstOrDefault();
+            var memoryCell = _memoryCells.Where((a, i) => i == index).FirstOrDefault();
             var maxAffinity = antibodies.Max(_antibody => _antibody.Affinity);
             var antibody = antibodies.Where(_antibody => _antibody.Affinity == maxAffinity).FirstOrDefault();
 
@@ -162,7 +165,7 @@ namespace AIS.ClonalgPR
             return _distance.Order(population).Take(numberHighAffinity).ToList();
         }
 
-        public void Execute(int maximumIterations, double percentHighAffinity, double percentLowAffinity)
+        public void Execute(int maximumIterations, double percentHighAffinity, double percentLowAffinity, int index = 0)
         {
             StartTimer();
 
@@ -189,7 +192,9 @@ namespace AIS.ClonalgPR
             }
             StopTimer();
             SetStatistics(maximumIterations, percentHighAffinity, percentLowAffinity);
-            PrintAntibodies();
+            //PrintAntibodies();
+            SaveResult(index);
+            SaveMemoryCells(index);
         }
 
         private void PrintAntibodies()
@@ -197,7 +202,10 @@ namespace AIS.ClonalgPR
             _memoryCells.ForEach(antibody =>
             {
                 if (antibody.Sequence.Length > 0)
+                {
                     Console.WriteLine(new string(antibody.Sequence));
+                    _memoryCellsStr.Add(new string(antibody.Sequence));
+                }
             });
         }
 
@@ -210,7 +218,7 @@ namespace AIS.ClonalgPR
             var standardDeviation = StandardDeviation(variance);
             var greaterAffinity = GreaterAffinity();
             var time = GetTime();
-            PrintResults(maximumIterations, average, variance, standardDeviation, greaterAffinity, time, percentHighAffinity, percentLowAffinity);
+            // PrintResults(maximumIterations, average, variance, standardDeviation, greaterAffinity, time, percentHighAffinity, percentLowAffinity);
             SetResult(average, variance, standardDeviation, maximumIterations, percentHighAffinity, percentLowAffinity, greaterAffinity, time);
         }
 
@@ -269,14 +277,38 @@ namespace AIS.ClonalgPR
 
         private void SetResult(double average, double variance, double standardDeviation, int maximumIterations, double percentHighAffinity, double percentLowAffinity, double greaterAffinity, double seconds)
         {
-            _results.Average.Add(average);
-            _results.Variance.Add(variance);
-            _results.StandardDeviation.Add(standardDeviation);
-            _results.GreaterAffinity.Add(greaterAffinity);
-            _results.MaximumIterations.Add(maximumIterations);
-            _results.PercentHighAffinity.Add(percentHighAffinity);
-            _results.PercentLowAffinity.Add(percentLowAffinity);
-            _results.Time.Add(seconds);
+            _results.Average = average;
+            _results.Variance = variance;
+            _results.StandardDeviation = standardDeviation;
+            _results.GreaterAffinity = greaterAffinity;
+            _results.MaximumIterations = maximumIterations;
+            _results.PercentHighAffinity = percentHighAffinity;
+            _results.PercentLowAffinity = percentLowAffinity;
+            _results.Time = seconds;
+        }
+
+        private void SaveResult(int index = 0)
+        {
+            if (_results.Average == 0) return;
+
+            var filePath = Path.Combine(Helpers.GetPath(), $"results{index}.json");
+            using (StreamWriter file = File.CreateText(filePath))
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Serialize(file, _results);
+            }
+        }
+
+        private void SaveMemoryCells(int index = 0)
+        {
+            if (_memoryCellsStr.Count() == 0) return;
+
+            var filePath = Path.Combine(Helpers.GetPath(), $"memoryCells{index}.json");
+            using (StreamWriter file = File.CreateText(filePath))
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Serialize(file, _memoryCellsStr);
+            }
         }
     }
 }
