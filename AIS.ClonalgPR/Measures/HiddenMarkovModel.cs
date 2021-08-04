@@ -127,10 +127,10 @@ namespace AIS.ClonalgPR.Measures
             return symbols[symbol] + 1;
         }
 
-        private double CalculateProbabilityBySymbol(char symbol, Dictionary<char, int> symbols)
+        private double CalculateProbabilityBySymbol(int insertStateCounterColumn, char symbol, Dictionary<char, int> symbols)
         {
             var observationsAmount = GetObservationsAmount();
-            return (double)symbols[symbol] / observationsAmount;
+            return (double)symbols[symbol] / observationsAmount / (insertStateCounterColumn == 0 ? 1d : Convert.ToDouble(insertStateCounterColumn));
         }
 
         private void UpdateTheAmountOfSymbols(char symbol, ref Dictionary<char, int> symbols)
@@ -138,32 +138,39 @@ namespace AIS.ClonalgPR.Measures
             symbols[symbol] = IncreaseObservationAmount(symbol, symbols);
         }
 
-        private void UpdateSymbolProbability(char symbol, Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void UpdateSymbolProbability(int insertStateCounterColumn, char symbol, Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
-            probabilities[symbol] = CalculateProbabilityBySymbol(symbol, symbols);
+            probabilities[symbol] = CalculateProbabilityBySymbol(insertStateCounterColumn, symbol, symbols);
         }
 
-        private void UpdateProbabilityAndAmountOfSymbols(int lineIndex, int columnIndex, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void UpdateProbabilityAndAmountOfSymbols(int lineIndex, int columnIndex, int insertStateCounterColumn, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             var symbol = GetSymbol(lineIndex, columnIndex);
             if (!IsGap(symbol))
             {
                 UpdateTheAmountOfSymbols(symbol, ref symbols);
-                UpdateSymbolProbability(symbol, symbols, ref probabilities);
+                UpdateSymbolProbability(insertStateCounterColumn, symbol, symbols, ref probabilities);
             }
         }
 
-        private void UpdateAllProbabilityAndAmountOfSymbols(int columnIndex, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
+        private void UpdateAllProbabilityAndAmountOfSymbols(int columnIndex, int insertStateCounterColumn, ref Dictionary<char, int> symbols, ref Dictionary<char, double> probabilities)
         {
             var observationsAmount = GetObservationsAmount();
             for (int lineIndex = 0; lineIndex < observationsAmount; lineIndex++)
-                UpdateProbabilityAndAmountOfSymbols(lineIndex, columnIndex, ref symbols, ref probabilities);
+                UpdateProbabilityAndAmountOfSymbols(lineIndex, columnIndex, insertStateCounterColumn, ref symbols, ref probabilities);
+        }
+
+        private void UpdateInsertStateCounterColumn(StateEnum state, ref int insertStateCounterColumn)
+        {
+            if (state == StateEnum.Insert) insertStateCounterColumn++;
+            else insertStateCounterColumn = 0;
         }
 
         private void CreateProbabilities()
         {
             var observationSize = GetObservationSize();
             var insertStateCounter = 0;
+            var insertStateCounterColumn = 0;
 
             for (int index = 0; index < observationSize; index++)
             {
@@ -171,8 +178,8 @@ namespace AIS.ClonalgPR.Measures
                 var symbols = InitSymbols();
                 var probabilities = InitEmissionProbabilities();
                 State currentState = GetCurrentState(currentIndex);
-
-                UpdateAllProbabilityAndAmountOfSymbols(index, ref symbols, ref probabilities);
+                UpdateInsertStateCounterColumn(currentState.Name, ref insertStateCounterColumn);
+                UpdateAllProbabilityAndAmountOfSymbols(index, insertStateCounterColumn, ref symbols, ref probabilities);
                 UpdateEmissionProbabilities(currentState.EmissionProbabilities, probabilities);
                 UpdateInsertStateCounterForProbabilities(index, ref insertStateCounter);
             }

@@ -5,7 +5,7 @@
         public double Affinity { get; set; }
         public string Antigen { get; set; }
         public int Length { get; set; }
-        public string Sequence { get; set; }
+        public char[] Sequence { get; set; }
 
         public Antibody Clone()
         {

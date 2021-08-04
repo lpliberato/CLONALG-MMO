@@ -35,7 +35,7 @@ namespace AIS.ClonalgPR
             for (int i = 0; i < antibodies.Count(); i++)
             {
                 // var sequenceA = antigen.Sequence.ToCharArray();
-                var sequenceB = antibodies[i].Sequence.ToCharArray();
+                var sequenceB = antibodies[i].Sequence;
                 antibodies[i].Affinity = _distance.Calculate(sequenceB: sequenceB);
             }
         }
@@ -66,9 +66,9 @@ namespace AIS.ClonalgPR
 
             for (int i = 0; i < antibodyAmount; i++)
             {
-                var sequence = "";
+                var sequence = new char[sequenceSize];
                 for (int j = 0; j < sequenceSize; j++)
-                    sequence += GenerateSequences();
+                    sequence[j] = GenerateSequences();
 
                 //sequence = "ACACATC";
                 antibodies.Add(new Antibody
@@ -126,13 +126,13 @@ namespace AIS.ClonalgPR
                 var rate = _distance.CalculateMutationRate(antibody.Affinity, antibody.Length);
                 var mutateAmount = (int)(antibody.Length * rate);
                 var sequenceIndex = Constants.Random.Next(0, antibody.Length);
-                var sequence = antibody.Sequence.ToCharArray();
+                var sequence = antibody.Sequence;
 
                 for (int j = 0; j < mutateAmount; j++)
                 {
                     var nucleotideOrAminoacid = GenerateSequences();
                     sequence[sequenceIndex] = nucleotideOrAminoacid;
-                    antibody.Sequence = new string(sequence);
+                    antibody.Sequence = sequence;
                     sequenceIndex = Constants.Random.Next(0, antibody.Length);
                 }
             }
@@ -196,8 +196,8 @@ namespace AIS.ClonalgPR
         {
             _memoryCells.ForEach(antibody =>
             {
-                if (!string.IsNullOrEmpty(antibody.Sequence))
-                    Console.WriteLine(antibody.Sequence);
+                if (antibody.Sequence.Length > 0)
+                    Console.WriteLine(new string(antibody.Sequence));
             });
         }
 
