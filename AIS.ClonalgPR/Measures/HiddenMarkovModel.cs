@@ -14,8 +14,8 @@ namespace AIS.ClonalgPR.Measures
         public HiddenMarkovModel(List<char[]> observations, TypeBioSequence typeBioSequence)
         {
             Observations = observations;
-            States = new List<State>();
             TypeBioSequence = typeBioSequence;
+            States = new List<State>();
         }
 
         public void Train()

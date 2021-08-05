@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AIS.ClonalgPR
@@ -61,28 +62,28 @@ namespace AIS.ClonalgPR
             var typeBioSequence = TypeBioSequence.PROTEIN;
 
             //Parallel.For(0, antigens.Count(),
-            //    index =>
-            //    {
-            //        var _antigens = antigens[index];
-            //        var sequences = GetSequencesByAntigens(_antigens);
-            //        var markov = new HiddenMarkovModel(sequences, typeBioSequence);
+            //index =>
+            //{
+            //    var _antigens = antigens[index];
+            //    var sequences = _antigens.Select(s => s.Sequence).ToList();
+            //    var markov = new HiddenMarkovModel(sequences, typeBioSequence);
 
-            //        markov.Train();
+            //    markov.Train();
 
-            //        var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-            //        clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, index);
-            //    });
+            //    var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
+            //    clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, index: index);
+            //});
 
-            for (int i = 0; i < antigens.Count; i++)
+            for (int index = 0; index < antigens.Count; index++)
             {
-                var _antigens = antigens[i];
-                var sequences = GetSequencesByAntigens(_antigens);
+                var _antigens = antigens[index];
+                var sequences = _antigens.Select(s => s.Sequence).ToList();
                 var markov = new HiddenMarkovModel(sequences, typeBioSequence);
 
                 markov.Train();
 
                 var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, i);
+                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4, index);
             }
 
             ReadAllFiles(antigens.Count());

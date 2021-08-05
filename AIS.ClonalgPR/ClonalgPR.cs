@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace AIS.ClonalgPR
 {
@@ -25,13 +24,17 @@ namespace AIS.ClonalgPR
             get { return _results; }
         }
 
+        public List<string> MemoryCells
+        {
+            get { return _memoryCellsStr;  }
+        }
+
         public ClonalgPR(IDistance distance, List<Antigen> antigens, TypeBioSequence typeBioSequence)
         {
             _distance = distance;
             _antigens = antigens;
             _typeBioSequence = typeBioSequence;
         }
-
 
         private void Affinity(Antigen antigen, List<Antibody> antibodies)
         {
@@ -73,7 +76,6 @@ namespace AIS.ClonalgPR
                 for (int j = 0; j < sequenceSize; j++)
                     sequence[j] = GenerateSequences();
 
-                //sequence = "ACACATC";
                 antibodies.Add(new Antibody
                 {
                     Sequence = sequence,
@@ -190,23 +192,20 @@ namespace AIS.ClonalgPR
                 }
                 i++;
             }
+
             StopTimer();
             SetStatistics(maximumIterations, percentHighAffinity, percentLowAffinity);
-            //PrintAntibodies();
+            SetMemoryCells();
             SaveResult(index);
             SaveMemoryCells(index);
         }
 
-        private void PrintAntibodies()
+        private void SetMemoryCells()
         {
-            _memoryCells.ForEach(antibody =>
-            {
-                if (antibody.Sequence.Length > 0)
-                {
-                    Console.WriteLine(new string(antibody.Sequence));
-                    _memoryCellsStr.Add(new string(antibody.Sequence));
-                }
-            });
+            _memoryCells
+                .Where(memoryCell => memoryCell.Sequence.Length > 0)
+                .ToList()
+                .ForEach(memoryCell =>  _memoryCellsStr.Add(new string(memoryCell.Sequence)));
         }
 
         private void SetStatistics(int maximumIterations, double percentHighAffinity, double percentLowAffinity)
