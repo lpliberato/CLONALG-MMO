@@ -10,10 +10,10 @@ namespace AIS.ClonalgPR
         private static Random _random = null;
         private static char[] _gaps = null;
 
-        public const int minimalAmountOfAntibodies = 1;
-        public const int maximumAmountOfAntibodies = 100;
-        public const int minimumAntibodySize = 4;
-        public const int maximumAntibodySize = 500;
+        public const int MINIMAL_AMOUNT_OF_ANTIBODIES = 1000;
+        public const int MAXIMUM_AMOUNT_OF_ANTIBODIES = 10000;
+        public const int MIN_SIZE_ANTIBODY = 3;
+        public const int MAX_SIZE_ANTIBODY = 9;
 
         public static char[] Aminoacids
         {

@@ -6,13 +6,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace AIS.ClonalgPR
 {
     class Program
     {
+        private const int START_REGION_SPIKE_PROTEIN = 21300;
+        private const int END_REGION_SPIKE_PROTEIN = 25400;
+
         private static List<Antigen> antigens = new List<Antigen>();
         private static TypeBioSequence TypeBioSequence
         {
@@ -27,11 +28,25 @@ namespace AIS.ClonalgPR
                     TypeBioSequence.UNKNOWN;
             }
         }
+        private static bool IsSigle
+        {
+            get
+            {
+                antigens = GetAntigens();
+                return antigens != null && antigens.Count > 0;
+            }
+        }
+        private static List<string> PatternsProof
+        {
+            get 
+            {
+                return new List<string>() { "TAAA", "ATG", "TTT", "TCT", "GAT", "TGG", "ACT", "ATTTTG", "ATA", "CGCT", "CAA" };
+            }
+        }
 
         static void Main()
         {
-            antigens = GetAntigens();
-            if (antigens != null && antigens.Count > 0)
+            if (IsSigle)
                 ExecuteSingle(antigens);
             else
             {
@@ -49,41 +64,26 @@ namespace AIS.ClonalgPR
 
             markov.Train();
 
-            //Console.WriteLine("Probabilidade = " + markov.CalculateTotalProbability(new char[7] { 'C','A','G','C','C','C','A' }));
-            //Console.WriteLine("Odds = " + markov.CalculateLogOdds(new char[7] { 'G', 'C', 'G', 'G', 'G', 'A', 'C' }));
+            for (int antibodySize = Constants.MIN_SIZE_ANTIBODY; antibodySize <= Constants.MAX_SIZE_ANTIBODY; antibodySize++)
+            {
+                var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens, typeBioSequence: TypeBioSequence, antibodySize: antibodySize);
+                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2);
+            }
 
-            var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens, typeBioSequence: TypeBioSequence);
-            clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
-
-            //SaveResult(clonalgPR.Results);        
+            ReadAllFiles(antigens.Count());
         }
         static void ExecuteMultiple(List<List<Antigen>> antigens)
         {
-            var typeBioSequence = TypeBioSequence.PROTEIN;
-
-            //Parallel.For(0, antigens.Count(),
-            //index =>
-            //{
-            //    var _antigens = antigens[index];
-            //    var sequences = _antigens.Select(s => s.Sequence).ToList();
-            //    var markov = new HiddenMarkovModel(sequences, typeBioSequence);
-
-            //    markov.Train();
-
-            //    var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-            //    clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2, index: index);
-            //});
-
             for (int index = 0; index < antigens.Count; index++)
             {
                 var _antigens = antigens[index];
                 var sequences = _antigens.Select(s => s.Sequence).ToList();
-                var markov = new HiddenMarkovModel(sequences, typeBioSequence);
+                var markov = new HiddenMarkovModel(sequences, TypeBioSequence);
 
                 markov.Train();
 
-                var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: typeBioSequence);
-                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4, index);
+                var clonalgPR = new ClonalgPR(distance: markov, antigens: _antigens, typeBioSequence: TypeBioSequence);
+                clonalgPR.Execute(maximumIterations: 10000, percentHighAffinity: 0.9, percentLowAffinity: 0.1, index);
             }
 
             ReadAllFiles(antigens.Count());
@@ -250,12 +250,16 @@ namespace AIS.ClonalgPR
             {
                 var characteristics = GetCharacteristics(sequence);
                 var _sequence = GetSequenceAntigen(characteristics);
+                var sequenceSource = _sequence.Trim().ToUpper().ToCharArray();
+                var charactersAmount = END_REGION_SPIKE_PROTEIN - START_REGION_SPIKE_PROTEIN;
+                char[] sequenceDestination = new char[charactersAmount];
+                Array.Copy(sequenceSource, START_REGION_SPIKE_PROTEIN, sequenceDestination, 0, charactersAmount);
 
                 antigens.Add(new Antigen
                 {
                     Name = GetNameAntigen(characteristics),
                     Host = GetHostAntigen(characteristics),
-                    Sequence = _sequence.Trim().ToUpper().ToCharArray(),
+                    Sequence = sequenceDestination,
                     Length = _sequence.Length
                 });
             }
@@ -263,44 +267,126 @@ namespace AIS.ClonalgPR
             return antigens;
         }
 
-        private static void SaveResult(Result results, int index = 0)
+        private static void ReadResults(int antigensCount)
         {
-            var filePath = Path.Combine(Helpers.GetPath(), $"results{index}.json");
-            using (StreamWriter file = File.CreateText(filePath))
+            var results = new List<Result>();
+
+            if (IsSigle)
             {
-                JsonSerializer serializer = new JsonSerializer();
-                serializer.Serialize(file, results);
+                for (int index = Constants.MIN_SIZE_ANTIBODY; index <= Constants.MAX_SIZE_ANTIBODY; index++)
+                {
+                    try
+                    {
+                        var fileName = $"results{index}.json";
+                        var filePath = Path.Combine(Helpers.GetPath(), fileName);
+                        JsonSerializer serializer = new JsonSerializer();
+
+                        using (StreamReader streamReader = new StreamReader(filePath))
+                        {
+                            JsonTextReader reader = new JsonTextReader(streamReader);
+                            var result = serializer.Deserialize<Result>(reader);
+                            results.Add(result);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
             }
+            else
+            {
+                for (int index = 0; index < antigensCount; index++)
+                {
+                    try
+                    {
+                        var fileName = $"results{index}.json";
+                        var filePath = Path.Combine(Helpers.GetPath(), fileName);
+                        JsonSerializer serializer = new JsonSerializer();
+
+                        using (StreamReader streamReader = new StreamReader(filePath))
+                        {
+                            JsonTextReader reader = new JsonTextReader(streamReader);
+                            var result = serializer.Deserialize<Result>(reader);
+                            results.Add(result);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        private static void EvaluatePatterns(List<string> patterns)
+        {
+            var intersection = patterns.Intersect(PatternsProof);
+            if (intersection.Count() == PatternsProof.Count())
+                Console.WriteLine("Foi possível encontrar todos os padrões!");
+            else if (intersection.Count() > 0)
+                Console.WriteLine($"Foi possível encontrar {intersection.Count()} de {PatternsProof.Count()} padrões!");
+
+            Console.WriteLine("");
+            intersection.ToList().ForEach(pattern => Console.WriteLine(pattern));
         }
 
         private static void ReadAllFiles(int antigensCount)
         {
             var patterns = new List<string>();
             JsonSerializer serializer = new JsonSerializer();
-            for (int i = 0; i < antigensCount; i++)
+
+            if (IsSigle)
             {
-                try
+                for (int index = Constants.MIN_SIZE_ANTIBODY; index <= Constants.MAX_SIZE_ANTIBODY; index++)
                 {
-                    var fileName = $"memoryCells{i}.json";
-                    var file = Path.Combine(Helpers.GetPath(), fileName);
-                    StreamReader re = new StreamReader(file);
-                    JsonTextReader reader = new JsonTextReader(re);
-                    var fragments = serializer.Deserialize<List<string>>(reader);
-                    for (int j = 0; j < fragments.Count(); j++)
+                    try
                     {
-                        if (patterns.Count() <= j)
+                        var fileName = $"memoryCells{index}.json";
+                        var filePath = Path.Combine(Helpers.GetPath(), fileName);
+                        StreamReader streamReader = new StreamReader(filePath);
+                        JsonTextReader reader = new JsonTextReader(streamReader);
+                        var fragments = serializer.Deserialize<List<string>>(reader);
+
+                        for (int j = 0; j < fragments.Count(); j++)
+                        {
                             patterns.Add(fragments[j]);
-                        else
-                            patterns[j] += fragments[j];
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
                     }
                 }
-                catch (Exception)
+            }
+            else
+            {
+                for (int index = 0; index < antigensCount; index++)
                 {
-                    continue;
+                    try
+                    {
+                        var fileName = $"memoryCells{index}.json";
+                        var file = Path.Combine(Helpers.GetPath(), fileName);
+                        StreamReader streamReader = new StreamReader(file);
+                        JsonTextReader reader = new JsonTextReader(streamReader);
+                        var fragments = serializer.Deserialize<List<string>>(reader);
+
+                        for (int j = 0; j < fragments.Count(); j++)
+                        {
+                            if (patterns.Count() <= j)
+                                patterns.Add(fragments[j]);
+                            else
+                                patterns[j] += fragments[j];
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
                 }
             }
 
-            patterns.Distinct().ToList().ForEach(pattern => Console.WriteLine(pattern));
+            EvaluatePatterns(patterns);
         }
     }
 }

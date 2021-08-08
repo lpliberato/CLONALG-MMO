@@ -464,23 +464,21 @@ namespace AIS.ClonalgPR.Measures
             UpdateTransitions(currentState, percentageOfMachState, percentageOfInsertState);
         }
 
-        public double CalculateTotalProbability(char[] observations)
-        {
-            return ForwardViterbi(observations);
-        }
+        //public double CalculateLogOdds(char[] observations)
+        //{
+        //    var probability = CalculateTotalProbability(observations);
+        //    return Math.Log(probability) - (observations.Length * Math.Log(1d / Constants.DNA.Length));
+        //}
 
-        public double CalculateLogOdds(char[] observations)
-        {
-            var probability = CalculateTotalProbability(observations);
-            return Math.Log(probability) - (observations.Length * Math.Log(1d / Constants.DNA.Length));
-        }
-
-        private double ForwardViterbi(char[] observation)
+        private double ForwardViterbi(char[] observation, int index, int length)
         {
             var prob = 1d;
-            for (int i = 0; i < observation.Length; i++)
+            var lastIndexState = index + length;
+            var observationIndex = 0;
+
+            for (int i = index; i < lastIndexState; i++)
             {
-                var symbol = observation[i];
+                var symbol = observation[observationIndex];
                 var currentState = GetCurrentState(i);
 
                 if (currentState.Name == StateEnum.Delete) continue;
@@ -496,16 +494,12 @@ namespace AIS.ClonalgPR.Measures
 
                 prob *= emissionProbability;
                 prob *= transitionProbabilities;
+                observationIndex++;
 
                 if (prob == 0) break;
             }
 
             return prob;
-        }
-
-        public double Calculate(char[] sequenceA = null, char[] sequenceB = null)
-        {
-            return ForwardViterbi(sequenceB);
         }
 
         public double CalculateCloneRate(double affinity, int length)
@@ -531,6 +525,11 @@ namespace AIS.ClonalgPR.Measures
         public int SequenceSize()
         {
             return States.Count();
+        }
+
+        public double Calculate(char[] sequence, int index, int length)
+        {
+            return ForwardViterbi(sequence, index, length);
         }
     }
 }
