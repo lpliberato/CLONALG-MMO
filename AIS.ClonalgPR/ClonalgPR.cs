@@ -132,13 +132,7 @@ namespace AIS.ClonalgPR
                 }
             }
             else
-            {
-                for (int i = 0; i < antibodies.Count(); i++)
-                {
-                    var antibody = antibodies[i];
-                    _memoryCells.Add(antibody);
-                }
-            }
+                antibodies.ForEach(antibody => _memoryCells.Add(antibody));
         }
 
         private List<Antibody> Mutation(List<Antibody> antibodies)

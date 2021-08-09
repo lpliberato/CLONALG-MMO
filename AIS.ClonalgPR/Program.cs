@@ -347,11 +347,7 @@ namespace AIS.ClonalgPR
                     {
                         JsonTextReader reader = new JsonTextReader(streamReader);
                         var fragments = serializer.Deserialize<List<string>>(reader);
-
-                        for (int j = 0; j < fragments.Count(); j++)
-                        {
-                            patterns.Add(fragments[j]);
-                        }
+                        fragments.ForEach(fragment => patterns.Add(fragment));
                     }
                 }
                 catch (Exception)
