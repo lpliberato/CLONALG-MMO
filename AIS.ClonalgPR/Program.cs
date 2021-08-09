@@ -67,7 +67,7 @@ namespace AIS.ClonalgPR
             for (int antibodySize = Constants.MIN_SIZE_ANTIBODY; antibodySize <= Constants.MAX_SIZE_ANTIBODY; antibodySize++)
             {
                 var clonalgPR = new ClonalgPR(distance: markov, antigens: antigens, typeBioSequence: TypeBioSequence, antibodySize: antibodySize);
-                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.8, percentLowAffinity: 0.2);
+                clonalgPR.Execute(maximumIterations: 1000, percentHighAffinity: 0.6, percentLowAffinity: 0.4);
             }
 
             ReadAllFiles(antigens.Count());
@@ -331,20 +331,20 @@ namespace AIS.ClonalgPR
             intersection.ToList().ForEach(pattern => Console.WriteLine(pattern));
         }
 
-        private static void ReadAllFiles(int antigensCount)
+        private static List<string> ReadSingleFile()
         {
             var patterns = new List<string>();
             JsonSerializer serializer = new JsonSerializer();
 
-            if (IsSigle)
+            for (int index = Constants.MIN_SIZE_ANTIBODY; index <= Constants.MAX_SIZE_ANTIBODY; index++)
             {
-                for (int index = Constants.MIN_SIZE_ANTIBODY; index <= Constants.MAX_SIZE_ANTIBODY; index++)
+                try
                 {
-                    try
+                    var fileName = $"memoryCells{index}.json";
+                    var filePath = Path.Combine(Helpers.GetPath(), fileName);
+
+                    using (StreamReader streamReader = new StreamReader(filePath))
                     {
-                        var fileName = $"memoryCells{index}.json";
-                        var filePath = Path.Combine(Helpers.GetPath(), fileName);
-                        StreamReader streamReader = new StreamReader(filePath);
                         JsonTextReader reader = new JsonTextReader(streamReader);
                         var fragments = serializer.Deserialize<List<string>>(reader);
 
@@ -353,21 +353,30 @@ namespace AIS.ClonalgPR
                             patterns.Add(fragments[j]);
                         }
                     }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
+                }
+                catch (Exception)
+                {
+                    continue;
                 }
             }
-            else
+
+            return patterns;
+        }
+
+        private static List<string> ReadMultipleFiles(int antigensCount)
+        {
+            var patterns = new List<string>();
+            JsonSerializer serializer = new JsonSerializer();
+
+            for (int index = 0; index < antigensCount; index++)
             {
-                for (int index = 0; index < antigensCount; index++)
+                try
                 {
-                    try
+                    var fileName = $"memoryCells{index}.json";
+                    var filePath = Path.Combine(Helpers.GetPath(), fileName);
+
+                    using (StreamReader streamReader = new StreamReader(filePath))
                     {
-                        var fileName = $"memoryCells{index}.json";
-                        var file = Path.Combine(Helpers.GetPath(), fileName);
-                        StreamReader streamReader = new StreamReader(file);
                         JsonTextReader reader = new JsonTextReader(streamReader);
                         var fragments = serializer.Deserialize<List<string>>(reader);
 
@@ -379,12 +388,24 @@ namespace AIS.ClonalgPR
                                 patterns[j] += fragments[j];
                         }
                     }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
+                }
+                catch (Exception)
+                {
+                    continue;
                 }
             }
+
+            return patterns;
+        }
+
+        private static void ReadAllFiles(int antigensCount)
+        {
+            var patterns = new List<string>();
+
+            if (IsSigle)
+                patterns = ReadSingleFile();
+            else
+                patterns = ReadMultipleFiles(antigensCount);
 
             EvaluatePatterns(patterns);
         }
